@@ -6195,8 +6195,8 @@
                     if (data.nextApptDate) {
                         await set(push(ref(firebaseDb, 'appointments')), {
                             patientId, patientName: data.patientName, date: data.nextApptDate,
-                            time: '18:00', type: vt.includes('متابعة') ? 'متابعة' : 'كشف',
-                            status: 'منتظر', isFollowUp: vt.includes('متابعة'), createdAt: Date.now()
+                            time: '18:00', type: 'متابعة',
+                            status: 'منتظر', isFollowUp: true, createdAt: Date.now()
                         });
                     }
                     showToast('تم حفظ السجل بنجاح ✓', 'success');
