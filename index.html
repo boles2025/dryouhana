@@ -3337,7 +3337,6 @@
         </div>
         <nav class="sidebar-nav" id="sidebarNav">
             <a href="#" class="nav-item active" data-page="dashboard"><i class="fas fa-th-large"></i><span class="nav-label">لوحة التحكم</span></a>
-            <a href="#" class="nav-item" data-page="patients"><i class="fas fa-user-plus"></i><span class="nav-label">تسجيل مريض</span></a>
             <a href="#" class="nav-item" data-page="search"><i class="fas fa-file-medical-alt"></i><span class="nav-label">ملف المريض الشامل</span></a>
             <a href="#" class="nav-item" data-page="appointments"><i class="fas fa-calendar-alt"></i><span class="nav-label">المواعيد</span></a>
             <a href="#" class="nav-item" data-page="reports"><i class="fas fa-chart-bar"></i><span class="nav-label">التقارير</span></a>
@@ -3369,6 +3368,19 @@
         <!-- Dashboard -->
         <div id="page-dashboard" class="page active">
             <div class="page-inner">
+                
+                <!-- Main Action Button -->
+                <div class="row mb-5 justify-content-center">
+                    <div class="col-12 col-md-8 col-lg-6">
+                        <button onclick="window.navigateTo('search')" class="w-100 btn shadow-lg main-action-pulse" style="border-radius: 100px; padding: 15px 25px; position: relative; overflow: hidden; display: flex; align-items: center; justify-content: center; gap: 15px; border: 2px solid rgba(255,255,255,0.4); text-decoration: none; background: linear-gradient(45deg, var(--primary), var(--accent), var(--primary-light)); background-size: 200% 200%; animation: gradientBG 4s ease infinite, glowPulse 2s infinite;">
+                            <div style="background: rgba(255,255,255,0.3); border-radius: 50%; width: 50px; height: 50px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; box-shadow: 0 5px 15px rgba(0,0,0,0.2);">
+                                <i class="fas fa-heartbeat" style="font-size: 24px; color: white; animation: pulse 1.5s infinite;"></i>
+                            </div>
+                            <h3 class="fw-bold mb-0 text-white" style="font-size: 24px; letter-spacing: 0.5px; text-shadow: 0 2px 4px rgba(0,0,0,0.3);">التسجيل والكشف</h3>
+                        </button>
+                    </div>
+                </div>
+
                 <!-- Circular Stat Cards -->
                 <div class="row g-3 mb-4 justify-content-center">
                     <div class="col-6 col-md-3 col-xl-auto">
@@ -3466,20 +3478,40 @@
             <div class="page-inner">
                 <div class="card-panel py-5"
                     style="background:transparent;box-shadow:none;border:none;overflow:visible !important">
-                    <div class="text-center mb-4">
-                        <h2 class="fw-bold gradient-doctor-name" style="font-size:32px">ملف المريض الشامل</h2>
-                        <p class="text-muted">ابحث عن أي مريض لمراجعة كشوفاته، روشتاته، أو مواعيده</p>
-                        <p class="fw-bold" style="color: var(--primary)">الإدارة الكاملة لبيانات المريض من مكان واحد</p>
+                    <div class="mx-auto" style="max-width:800px">
+                        <div style="background: var(--surface-glass); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); border: 1px solid var(--border-glass); border-radius: 24px; padding: 30px; box-shadow: 0 15px 35px rgba(0,0,0,0.05); position: relative; overflow: visible;">
+                            
+                            <div class="text-center mb-4">
+                                <div style="width: 70px; height: 70px; background: linear-gradient(135deg, var(--primary-light), var(--accent-light)); border-radius: 20px; display: flex; align-items: center; justify-content: center; margin: 0 auto 15px; box-shadow: 0 10px 20px rgba(99, 102, 241, 0.2);">
+                                    <i class="fas fa-folder-open text-white" style="font-size: 30px;"></i>
+                                </div>
+                                <h2 class="fw-bold gradient-doctor-name" style="font-size:28px">ملف المريض الشامل</h2>
+                                <p class="text-muted mb-0">ابحث عن مريض مسجل أو ابدأ بتسجيل مريض جديد بضغطة زر</p>
+                            </div>
 
-                    </div>
-                    <div class="mx-auto" style="max-width:700px">
-                        <div class="search-box" style="min-height:70px; height: auto;">
-                            <input type="text" id="globalSearchInput" placeholder="اكتب اسم المريض أو رقم المريض هنا..."
-                                onfocus="window.globalSearchAction(this.value)"
-                                oninput="window.globalSearchAction(this.value)" autocomplete="off"
-                                style="font-size:18px;padding-right:55px; height: 64px;">
-                            <i class="fas fa-search search-icon-inside" style="font-size:24px;right:18px"></i>
-                            <div id="globalSearchDropdown" class="search-dropdown" style="top:75px"></div>
+                            <div class="search-box mb-4" style="min-height:70px; height: auto; position: relative; z-index: 10;">
+                                <div class="d-flex align-items-center position-relative">
+                                    <input type="text" id="globalSearchInput" placeholder="اكتب اسم أو رقم المريض للبحث السريع..."
+                                        onfocus="window.globalSearchAction(this.value)"
+                                        oninput="window.globalSearchAction(this.value)" autocomplete="off"
+                                        style="font-size:18px; padding-right:65px; padding-left: 60px; height: 64px; border-radius: 16px; box-shadow: inset 0 2px 4px rgba(0,0,0,0.02); border: 2px solid transparent; transition: all 0.3s ease; width: 100%;">
+                                    <i class="fas fa-search" style="font-size:22px; position: absolute; right:22px; top:50%; transform: translateY(-50%); color: var(--primary);"></i>
+                                    <button class="btn btn-sm btn-soft" onclick="window.startNewSearch()" style="position: absolute; left: 10px; top: 50%; transform: translateY(-50%); border-radius: 12px; height: 44px; display: flex; align-items: center; justify-content: center; padding: 0 15px; font-weight: bold;" title="مسح البحث">
+                                        <i class="fas fa-times me-1"></i> مسح
+                                    </button>
+                                </div>
+                                <div id="globalSearchDropdown" class="search-dropdown" style="top:75px; border-radius: 16px; box-shadow: 0 20px 40px rgba(0,0,0,0.1);"></div>
+                            </div>
+                            
+                            <div class="d-flex justify-content-center gap-3">
+                                <button class="btn btn-outline-teal px-4 py-3 rounded-4 fw-bold shadow-sm flex-grow-1" onclick="window.showAllPatientsModal()" style="transition: all 0.3s ease; display: flex; align-items: center; justify-content: center; gap: 10px; font-size: 16px; max-width: 250px;">
+                                    <i class="fas fa-users text-teal"></i> جميع المرضى
+                                </button>
+                                <button class="btn btn-gradient px-4 py-3 rounded-4 fw-bold shadow-sm flex-grow-1" onclick="window.openQuickRegisterModal()" style="transition: all 0.3s ease; display: flex; align-items: center; justify-content: center; gap: 10px; font-size: 16px; max-width: 300px;">
+                                    <i class="fas fa-user-plus text-white"></i> تسجيل مريض جديد
+                                </button>
+                            </div>
+
                         </div>
                     </div>
                 </div>
@@ -3510,51 +3542,7 @@
             </div>
         </div>
 
-        <!-- Patients -->
-        <div id="page-patients" class="page">
-            <div class="page-inner">
-                <div class="card-panel">
-                    <div class="panel-header"><i class="fas fa-user-plus"></i> تسجيل مريض جديد</div>
-                    <div class="panel-body">
-                        <form id="patientForm">
-                            <div class="row g-2">
-                                <div class="col-md-2"><label class="form-label">رقم المريض</label><input type="text"
-                                        class="form-control" id="patientId" readonly></div>
-                                <div class="col-md-3"><label class="form-label">تاريخ التسجيل</label><input type="date"
-                                        class="form-control" id="patientRegDate" onchange="window.updateRegDay()"></div>
-                                <div class="col-md-2"><label class="form-label">اليوم</label><input type="text"
-                                        class="form-control" id="patientRegDay" readonly></div>
-                                <div class="col-md-5"><label class="form-label">الاسم الكامل <span
-                                            class="text-danger">*</span></label><input type="text" class="form-control"
-                                        id="patientName" required></div>
-                                <div class="col-md-2"><label class="form-label">العمر</label><input type="number"
-                                        class="form-control" id="patientAge" min="0" max="150" inputmode="numeric">
-                                </div>
-                                <div class="col-md-2"><label class="form-label">النوع</label><select class="form-select"
-                                        id="patientGender">
-                                        <option value="">اختر</option>
-                                        <option value="ذكر">ذكر</option>
-                                        <option value="أنثى">أنثى</option>
-                                    </select></div>
-                                <div class="col-md-4"><label class="form-label">الهاتف</label><input type="tel"
-                                        class="form-control" id="patientPhone" inputmode="tel"></div>
-                                <div class="col-md-4"><label class="form-label">العنوان</label><input type="text"
-                                        class="form-control" id="patientAddress"></div>
-                                <div id="patientExtraFields"></div>
-                                <div class="col-12">
-                                    <div class="d-flex gap-2 flex-wrap mt-2"><button type="submit"
-                                            class="btn-gradient"><i class="fas fa-save"></i> حفظ</button><button
-                                            type="button" class="btn-outline-teal" onclick="showAllPatients()"><i
-                                                class="fas fa-list"></i> جميع المرضى</button><button type="button"
-                                            class="btn-soft" onclick="resetPatientForm()"><i class="fas fa-redo"></i>
-                                            تفريغ</button></div>
-                                </div>
-                            </div>
-                        </form>
-                    </div>
-                </div>
-            </div>
-        </div>
+        <!-- page-patients removed entirely as requested -->
 
         <!-- Appointments -->
         <div id="page-appointments" class="page">
@@ -4557,16 +4545,17 @@
                     const appt = window.allAppointments[apptKey];
                     if (!appt) return showToast('تعذر العثور على بيانات الموعد', 'error');
                     
-                    // Navigate to Patients page
-                    window.navigateTo('patients');
+                    // Navigate to Search page and open quick modal
+                    window.navigateTo('search');
+                    window.openQuickRegisterModal();
                     
                     // Pre-fill the form
                     setTimeout(() => {
-                        const nameInp = document.getElementById('patientName');
-                        const phoneInp = document.getElementById('patientPhone');
-                        const ageInp = document.getElementById('patientAge');
-                        const genderInp = document.getElementById('patientGender');
-                        const addressInp = document.getElementById('patientAddress');
+                        const nameInp = document.getElementById('quickPatientName');
+                        const phoneInp = document.getElementById('quickPatientPhone');
+                        const ageInp = document.getElementById('quickPatientAge');
+                        const genderInp = document.getElementById('quickPatientGender');
+                        const addressInp = document.getElementById('quickPatientAddress');
                         
                         if(nameInp) nameInp.value = appt.patientName || '';
                         if(phoneInp) phoneInp.value = appt.phone || '';
@@ -4627,10 +4616,16 @@
         }
 
         function getArabicDay(d) {
-            const days = ['الأحد', 'الاثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت'];
-            const dd = new Date(d);
-            return isNaN(dd.getTime()) ? '' : days[dd.getDay()];
+            if (!d) return '';
+            const parts = d.split('-');
+            if (parts.length === 3) {
+                const dd = new Date(parts[0], parts[1] - 1, parts[2]);
+                const days = ['الأحد', 'الاثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت'];
+                return isNaN(dd.getTime()) ? '' : days[dd.getDay()];
+            }
+            return '';
         }
+        window.getArabicDay = getArabicDay;
 
         function formatDateWithDay(dateStr) {
             if (!dateStr) return '';
@@ -5491,10 +5486,92 @@
                 const el = document.getElementById('cpf_' + f.id); if (el) data[
                     'cpf_' + f.id] = el.value;
             });
-            await set(push(ref(firebaseDb, 'patients')), data);
+            const newPatientRef = push(ref(firebaseDb, 'patients'));
+            const newPatientKey = newPatientRef.key;
+            await set(newPatientRef, data);
+            
+            // Ensure local memory has the new patient instantly to prevent race condition
+            if (!window.allPatients) window.allPatients = {};
+            window.allPatients[newPatientKey] = data;
+            
             showToast('تم تسجيل المريض ✓', 'success');
             window.resetPatientForm();
+            
+            // Auto redirect to Patient File ("ملف المريض الشامل") and select this patient
+            window.navigateTo('search');
+            window.selectGlobalPatient(newPatientKey);
         }
+
+        window.startNewSearch = function () {
+            const searchInput = document.getElementById('globalSearchInput');
+            if (searchInput) {
+                searchInput.value = '';
+                searchInput.focus();
+            }
+            const dd = document.getElementById('globalSearchDropdown');
+            if (dd) dd.classList.remove('open');
+            const container = document.getElementById('selectedPatientContainer');
+            if (container) container.style.display = 'none';
+            const infoBox = document.getElementById('selectedPatientInfoBox');
+            if (infoBox) infoBox.innerHTML = '';
+            window.globalSelectedPatientKey = null;
+            window.globalSelectedPatientData = null;
+        };
+
+        window.openQuickRegisterModal = function () {
+            document.getElementById('quickPatientForm')?.reset();
+            const today = window.getToday ? window.getToday() : new Date().toISOString().split('T')[0];
+            document.getElementById('quickPatientRegDate').value = today;
+            try {
+                document.getElementById('quickPatientRegDay').value = getArabicDay(today);
+            } catch(e) {}
+            document.getElementById('quickPatientId').value = window.patientCounter || '';
+            
+            const el = document.getElementById('quickPatientExtraFields');
+            if (el && window.customPatientFields) {
+                el.innerHTML = window.customPatientFields.map(f =>
+                    `<div class="col-md-6"><label class="form-label">${f.label}</label><input type="${f.type}" class="form-control" id="qcpf_${f.id}"></div>`
+                ).join('');
+            }
+            
+            new bootstrap.Modal(document.getElementById('quickRegisterModal')).show();
+        };
+
+        window.saveQuickPatient = async function (e) {
+            e.preventDefault();
+            const name = document.getElementById('quickPatientName').value.trim();
+            if (!name) return showToast('أدخل اسم المريض', 'error');
+            
+            const data = {
+                patientId: window.patientCounter,
+                name,
+                age: document.getElementById('quickPatientAge').value,
+                gender: document.getElementById('quickPatientGender').value,
+                phone: document.getElementById('quickPatientPhone').value,
+                address: document.getElementById('quickPatientAddress').value,
+                regDate: document.getElementById('quickPatientRegDate').value,
+                regDay: document.getElementById('quickPatientRegDay').value,
+                createdAt: Date.now()
+            };
+            if (window.customPatientFields) {
+                window.customPatientFields.forEach(f => {
+                    const el = document.getElementById('qcpf_' + f.id); 
+                    if (el) data['cpf_' + f.id] = el.value;
+                });
+            }
+            
+            const newPatientRef = push(ref(firebaseDb, 'patients'));
+            const newPatientKey = newPatientRef.key;
+            await set(newPatientRef, data);
+            
+            if (!window.allPatients) window.allPatients = {};
+            window.allPatients[newPatientKey] = data;
+            
+            showToast('تم تسجيل المريض سريعاً ✓', 'success');
+            bootstrap.Modal.getInstance(document.getElementById('quickRegisterModal'))?.hide();
+            
+            window.selectGlobalPatient(newPatientKey);
+        };
 
         window.globalSearchAction = debounce(function (val) {
             const dd = document.getElementById('globalSearchDropdown');
@@ -5502,8 +5579,8 @@
             const v = (val || '').trim();
             let results = [];
             if (v.length === 0) {
-                results = Object.entries(window.allPatients).sort((a, b) => (b[1].createdAt || 0) - (a[1].createdAt || 0))
-                    .slice(0, 15);
+                if (dd) dd.classList.remove('open');
+                return;
             } else {
                 results = Object.entries(window.allPatients).filter(([k, p]) =>
                     (p.name && p.name.includes(v)) || (String(p.patientId).includes(v))
@@ -7191,7 +7268,6 @@
             <td><div class="d-flex gap-1">
               <button class="btn-sm-action btn-edit-sm" onclick="window.openEditPatient('${getPatientKey(p.patientId)}')"><i class="fas fa-edit"></i></button>
               <button class="btn-sm-action btn-view-sm" onclick="window.viewPatientRecord('${getPatientKey(p.patientId)}')"><i class="fas fa-folder-open"></i></button>
-              <button class="btn-sm-action btn-attach-sm" onclick="window.openNewExamForPatient('${getPatientKey(p.patientId)}')"><i class="fas fa-stethoscope"></i></button>
               <button class="btn-sm-action btn-delete-sm" onclick="window.deletePatient('${getPatientKey(p.patientId)}')"><i class="fas fa-trash"></i></button>
             </div></td></tr>`).join('');
         }
@@ -8914,6 +8990,65 @@
                     <button type="button" class="btn-soft px-4 fw-bold" onclick="window.navigateTo('revenue')"
                         data-bs-dismiss="modal">إدارة كافة الإيرادات</button>
                     <button type="button" class="btn-gradient px-5 fw-bold" data-bs-dismiss="modal">إغلاق</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Quick Register Patient Modal -->
+    <div class="modal fade" id="quickRegisterModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-lg modal-dialog-centered">
+            <div class="modal-content" style="border: none; border-radius: var(--radius); overflow: hidden; box-shadow: var(--shadow-xl);">
+                <div class="modal-header" style="background: linear-gradient(135deg, var(--primary), var(--accent)); color: #fff; border-bottom: none; padding: 20px 25px;">
+                    <h5 class="modal-title fw-bold"><i class="fas fa-user-plus me-2"></i> تسجيل مريض سريع</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body" style="padding: 25px; background: var(--surface);">
+                    <form id="quickPatientForm" onsubmit="window.saveQuickPatient(event)">
+                        <div class="row g-3">
+                            <div class="col-md-3">
+                                <label class="form-label text-muted fw-bold small">رقم المريض</label>
+                                <input type="text" class="form-control bg-light" id="quickPatientId" readonly style="border: 1px dashed var(--border);">
+                            </div>
+                            <div class="col-md-5">
+                                <label class="form-label text-muted fw-bold small">تاريخ التسجيل</label>
+                                <input type="date" class="form-control" id="quickPatientRegDate" oninput="try{ document.getElementById('quickPatientRegDay').value = window.getArabicDay(this.value); }catch(e){}">
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label text-muted fw-bold small">اليوم</label>
+                                <input type="text" class="form-control bg-light" id="quickPatientRegDay" readonly>
+                            </div>
+                            <div class="col-md-12">
+                                <label class="form-label text-muted fw-bold small">الاسم الكامل <span class="text-danger">*</span></label>
+                                <input type="text" class="form-control" id="quickPatientName" required placeholder="أدخل اسم المريض ثلاثي">
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label text-muted fw-bold small">العمر</label>
+                                <input type="number" class="form-control" id="quickPatientAge" min="0" max="150" inputmode="numeric" placeholder="سنة">
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label text-muted fw-bold small">النوع</label>
+                                <select class="form-select" id="quickPatientGender">
+                                    <option value="">اختر</option>
+                                    <option value="ذكر">ذكر</option>
+                                    <option value="أنثى">أنثى</option>
+                                </select>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label text-muted fw-bold small">الهاتف</label>
+                                <input type="tel" class="form-control" id="quickPatientPhone" inputmode="tel" placeholder="01xxxxxxxxx" style="direction: ltr; text-align: right;">
+                            </div>
+                            <div class="col-12">
+                                <label class="form-label text-muted fw-bold small">العنوان</label>
+                                <input type="text" class="form-control" id="quickPatientAddress" placeholder="المدينة - المنطقة - الشارع">
+                            </div>
+                            <div id="quickPatientExtraFields" class="row g-3 mt-0"></div>
+                        </div>
+                        <div class="d-flex gap-2 justify-content-end mt-4 pt-3" style="border-top: 1px solid var(--border-light);">
+                            <button type="button" class="btn btn-soft px-4 fw-bold" data-bs-dismiss="modal">إلغاء</button>
+                            <button type="submit" class="btn btn-gradient px-4 fw-bold"><i class="fas fa-save me-1"></i> حفظ وبدء الكشف</button>
+                        </div>
+                    </form>
                 </div>
             </div>
         </div>
