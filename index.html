@@ -14,6 +14,10 @@
     </script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js">
     </script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+    <link rel="stylesheet" href="https://npmcdn.com/flatpickr/dist/themes/dark.css">
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+    <script src="https://npmcdn.com/flatpickr/dist/l10n/ar.js"></script>
     <style>
         /* ═══ Circle Stat Cards ═══ */
         .circle-stat-card {
@@ -6098,15 +6102,51 @@
 
 
         function setupNextApptLogic(dateId, dayId) {
-            const dateInput = document.getElementById(dateId);
-            const dayDisplay = document.getElementById(dayId);
-            if (!dateInput || !dayDisplay) return;
+            const dateInputs = document.querySelectorAll('#' + dateId);
+            const dayDisplays = document.querySelectorAll('#' + dayId);
             
-            dateInput.addEventListener('input', () => {
-                if (dateInput.value) {
-                    dayDisplay.textContent = getArabicDay(dateInput.value);
+            dateInputs.forEach((dateInput, index) => {
+                const dayDisplay = dayDisplays[index];
+                if (!dateInput || !dayDisplay) return;
+                
+                if (dateInput._flatpickr) return; // Prevent double initialization
+                
+                if (typeof flatpickr !== 'undefined') {
+                    flatpickr(dateInput, {
+                        locale: "ar",
+                        dateFormat: "Y-m-d",
+                        minDate: "today",
+                        onChange: function(selectedDates, dateStr, instance) {
+                            if (dateStr) {
+                                dayDisplay.textContent = getArabicDay(dateStr);
+                            } else {
+                                dayDisplay.textContent = '--';
+                            }
+                        },
+                        onDayCreate: function(dObj, dStr, fp, dayElem) {
+                            const dateString = fp.formatDate(dayElem.dateObj, "Y-m-d");
+                            let count = 0;
+                            if (window.allAppointments) {
+                                Object.values(window.allAppointments).forEach(appt => {
+                                    if (appt.date === dateString) {
+                                        count++;
+                                    }
+                                });
+                            }
+                            if (count > 0) {
+                                dayElem.style.position = 'relative';
+                                dayElem.innerHTML += `<span style="position: absolute; bottom: 1px; right: 1px; background: #000; color: #fff; border-radius: 50%; width: 14px; height: 14px; font-size: 9px; line-height: 14px; text-align: center; font-weight: bold; box-shadow: 0 1px 3px rgba(0,0,0,0.5);">${count}</span>`;
+                            }
+                        }
+                    });
                 } else {
-                    dayDisplay.textContent = '--';
+                    dateInput.addEventListener('input', () => {
+                        if (dateInput.value) {
+                            dayDisplay.textContent = getArabicDay(dateInput.value);
+                        } else {
+                            dayDisplay.textContent = '--';
+                        }
+                    });
                 }
             });
         }
