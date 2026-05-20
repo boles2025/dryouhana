@@ -2420,6 +2420,241 @@
             outline: none;
         }
 
+        /* ═══ Main Action Button ═══ */
+        .main-action-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 14px;
+            padding: 14px 30px;
+            border-radius: 60px;
+            border: none;
+            cursor: pointer;
+            position: relative;
+            overflow: hidden;
+            background: linear-gradient(135deg, #0891b2 0%, #0d9488 40%, #6366f1 100%);
+            background-size: 200% 200%;
+            animation: gradientShift 4s ease infinite, mainBtnGlow 3s ease-in-out infinite;
+            box-shadow: 0 8px 25px rgba(8,145,178,0.4), 0 0 0 0 rgba(8,145,178,0.3);
+            transition: all 0.4s cubic-bezier(0.16,1,0.3,1);
+            text-decoration: none;
+            font-family: var(--font-main);
+            width: auto;
+        }
+        @keyframes mainBtnGlow {
+            0%,100% { box-shadow: 0 8px 25px rgba(8,145,178,0.4), 0 0 0 0 rgba(8,145,178,0.2); }
+            50%      { box-shadow: 0 12px 35px rgba(99,102,241,0.5), 0 0 0 10px rgba(8,145,178,0); }
+        }
+        .main-action-btn::before {
+            content: '';
+            position: absolute;
+            top: -50%; left: -60%;
+            width: 50%; height: 200%;
+            background: rgba(255,255,255,0.18);
+            transform: rotate(25deg);
+            transition: left 0.6s ease;
+        }
+        .main-action-btn:hover::before { left: 130%; }
+        .main-action-btn:hover {
+            transform: translateY(-4px) scale(1.04);
+            box-shadow: 0 18px 45px rgba(8,145,178,0.55), 0 0 0 1px rgba(255,255,255,0.2);
+        }
+        .main-action-btn:active { transform: translateY(-1px) scale(0.99); }
+        .main-action-btn-icon {
+            width: 44px; height: 44px;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.2);
+            display: flex; align-items: center; justify-content: center;
+            font-size: 20px; color: #fff;
+            flex-shrink: 0;
+            backdrop-filter: blur(8px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2), inset 0 1px 0 rgba(255,255,255,0.3);
+            animation: pulse 2s ease-in-out infinite;
+        }
+        .main-action-btn-text {
+            font-size: 17px;
+            font-weight: 900;
+            color: #fff;
+            letter-spacing: 0.5px;
+            text-shadow: 0 2px 6px rgba(0,0,0,0.2);
+            position: relative;
+            z-index: 1;
+        }
+        .main-action-btn-sub {
+            font-size: 10px;
+            color: rgba(255,255,255,0.75);
+            font-weight: 600;
+            letter-spacing: 0.5px;
+            margin-top: 1px;
+        }
+        @media (max-width: 480px) {
+            .main-action-btn { padding: 12px 22px; gap: 11px; }
+            .main-action-btn-icon { width: 38px; height: 38px; font-size: 17px; }
+            .main-action-btn-text { font-size: 15px; }
+        }
+
+        /* ═══ Next Appointment Picker Card ═══ */
+        @keyframes apptPickerGlow {
+            0%,100% { box-shadow: 0 0 0 0 rgba(99,102,241,0.4), 0 6px 20px rgba(99,102,241,0.15); }
+            50%      { box-shadow: 0 0 0 6px rgba(99,102,241,0), 0 6px 30px rgba(99,102,241,0.35); }
+        }
+        @keyframes calendarIconSpin {
+            0%,80%,100% { transform: scale(1) rotate(0deg); }
+            40%          { transform: scale(1.15) rotate(-8deg); }
+        }
+        .next-appt-picker-wrap {
+            position: relative;
+            border-radius: 18px;
+            padding: 16px 18px;
+            background: linear-gradient(135deg, rgba(99,102,241,0.18), rgba(139,92,246,0.12), rgba(6,182,212,0.18));
+            border: 2px solid rgba(99,102,241,0.4);
+            animation: apptPickerGlow 3s ease-in-out infinite;
+            transition: all 0.4s ease;
+            overflow: hidden;
+        }
+        .next-appt-picker-wrap::before {
+            content: '';
+            position: absolute; top:-40%; right:-10%;
+            width:160px; height:160px;
+            background: radial-gradient(circle, rgba(99,102,241,0.2) 0%, transparent 70%);
+            pointer-events: none;
+        }
+        .next-appt-picker-wrap:focus-within {
+            border-color: rgba(99,102,241,0.8);
+            animation: none;
+            box-shadow: 0 0 0 3px rgba(99,102,241,0.25), 0 10px 35px rgba(99,102,241,0.3);
+        }
+        .next-appt-picker-label {
+            display: flex; align-items: center; gap: 9px;
+            font-size: 12px; font-weight: 900;
+            text-transform: uppercase; letter-spacing: 1.5px;
+            background: linear-gradient(90deg, #a5b4fc, #c4b5fd, #67e8f9);
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 12px;
+        }
+        .next-appt-picker-label i {
+            font-size: 18px;
+            background: linear-gradient(135deg, #6366f1, #8b5cf6);
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+            background-clip: text;
+            animation: calendarIconSpin 4s ease-in-out infinite;
+        }
+        .next-appt-picker-row {
+            display: flex; gap: 10px; align-items: center;
+        }
+        .next-appt-picker-input {
+            flex: 1;
+            background: rgba(0,0,0,0.3) !important;
+            border: 1.5px solid rgba(99,102,241,0.4) !important;
+            border-radius: 12px !important;
+            color: #fff !important;
+            font-size: 15px !important;
+            font-weight: 700 !important;
+            padding: 10px 14px !important;
+            transition: all 0.3s !important;
+            font-family: var(--font-main) !important;
+        }
+        .next-appt-picker-input:focus {
+            border-color: rgba(99,102,241,0.9) !important;
+            box-shadow: 0 0 0 3px rgba(99,102,241,0.2) !important;
+            background: rgba(0,0,0,0.45) !important;
+            outline: none !important;
+        }
+        .next-appt-picker-input::-webkit-calendar-picker-indicator {
+            filter: invert(1) opacity(0.7);
+            cursor: pointer;
+        }
+        .next-appt-day-badge {
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            min-width: 80px; height: 46px;
+            background: linear-gradient(135deg, rgba(99,102,241,0.35), rgba(139,92,246,0.25));
+            border: 1.5px solid rgba(165,180,252,0.45);
+            border-radius: 12px;
+            color: #c7d2fe;
+            font-weight: 900;
+            font-size: 13px;
+            letter-spacing: 0.5px;
+            flex-shrink: 0;
+            transition: all 0.3s;
+            box-shadow: 0 4px 12px rgba(99,102,241,0.2);
+        }
+        .next-appt-day-badge.has-date {
+            background: linear-gradient(135deg, #6366f1, #8b5cf6);
+            border-color: #a5b4fc;
+            color: #fff;
+            box-shadow: 0 6px 20px rgba(99,102,241,0.45);
+            animation: countdownPop 0.4s cubic-bezier(0.175,0.885,0.32,1.275);
+        }
+        .next-appt-day-badge .day-icon { font-size: 14px; margin-bottom: 2px; }
+        .next-appt-day-badge .day-name { font-size: 11px; font-weight: 800; }
+        @media (max-width: 480px) {
+            .next-appt-picker-wrap { padding: 12px 14px; border-radius: 14px; }
+            .next-appt-day-badge { min-width: 66px; font-size: 11px; }
+            .next-appt-picker-input { font-size: 13px !important; }
+        }
+
+        /* ═══ Next Appointment Status Alert & Calendar Day Badges ═══ */
+        .next-appt-status-alert {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px 14px;
+            border-radius: 12px;
+            margin-top: 10px;
+            font-size: 12px;
+            font-weight: 700;
+            animation: slideDownIn 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+            border: 1px solid transparent;
+        }
+        .next-appt-status-alert.status-empty {
+            background: rgba(16, 185, 129, 0.15);
+            border-color: rgba(16, 185, 129, 0.3);
+            color: #34d399;
+        }
+        .next-appt-status-alert.status-moderate {
+            background: rgba(99, 102, 241, 0.15);
+            border-color: rgba(99, 102, 241, 0.3);
+            color: #a5b4fc;
+        }
+        .next-appt-status-alert.status-busy {
+            background: rgba(239, 68, 68, 0.15);
+            border-color: rgba(239, 68, 68, 0.3);
+            color: #fca5a5;
+            animation: pulseAlert 2s infinite;
+        }
+        @keyframes pulseAlert {
+            0%, 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.2); }
+            50% { box-shadow: 0 0 0 6px rgba(239, 68, 68, 0); }
+        }
+        @keyframes slideDownIn {
+            from { opacity: 0; transform: translateY(-8px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Custom Flatpickr styles for days with appointments */
+        .flatpickr-day.has-appointments-day {
+            border: 1.5px solid rgba(99, 102, 241, 0.55) !important;
+            background: rgba(99, 102, 241, 0.12) !important;
+            position: relative;
+        }
+        .flatpickr-day-appt-badge {
+            position: absolute;
+            bottom: 2px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: linear-gradient(135deg, #ef4444, #dc2626);
+            color: #fff;
+            border-radius: 8px;
+            min-width: 13px;
+            height: 13px;
+            font-size: 8px;
+            line-height: 13px;
+            text-align: center;
+            font-weight: 900;
+            box-shadow: 0 2px 5px rgba(239, 68, 68, 0.4);
+            padding: 0 3px;
+        }
+
         /* Next Appointment Display */
         .next-appt-box {
             background: rgba(99, 102, 241, 0.15);
@@ -2773,6 +3008,15 @@
 
             .page-inner {
                 padding: 12px;
+            }
+
+            /* Make all table panels / tables responsive and clean on mobile */
+            .card-panel, .glass-card, .modal-body, .panel-body, .table-card {
+                overflow-x: auto !important;
+                -webkit-overflow-scrolling: touch;
+            }
+            .clinic-table {
+                min-width: 600px;
             }
 
             .stat-num {
@@ -3374,15 +3618,17 @@
             <div class="page-inner">
                 
                 <!-- Main Action Button -->
-                <div class="row mb-5 justify-content-center">
-                    <div class="col-12 col-md-8 col-lg-6">
-                        <button onclick="window.navigateTo('search')" class="w-100 btn shadow-lg main-action-pulse" style="border-radius: 100px; padding: 15px 25px; position: relative; overflow: hidden; display: flex; align-items: center; justify-content: center; gap: 15px; border: 2px solid rgba(255,255,255,0.4); text-decoration: none; background: linear-gradient(45deg, var(--primary), var(--accent), var(--primary-light)); background-size: 200% 200%; animation: gradientBG 4s ease infinite, glowPulse 2s infinite;">
-                            <div style="background: rgba(255,255,255,0.3); border-radius: 50%; width: 50px; height: 50px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; box-shadow: 0 5px 15px rgba(0,0,0,0.2);">
-                                <i class="fas fa-heartbeat" style="font-size: 24px; color: white; animation: pulse 1.5s infinite;"></i>
-                            </div>
-                            <h3 class="fw-bold mb-0 text-white" style="font-size: 24px; letter-spacing: 0.5px; text-shadow: 0 2px 4px rgba(0,0,0,0.3);">التسجيل والكشف</h3>
-                        </button>
-                    </div>
+                <div class="d-flex justify-content-center mb-4">
+                    <button onclick="window.navigateTo('search')" class="main-action-btn">
+                        <div class="main-action-btn-icon">
+                            <i class="fas fa-stethoscope"></i>
+                        </div>
+                        <div>
+                            <div class="main-action-btn-text">التسجيل والكشف</div>
+                            <div class="main-action-btn-sub">ابدأ كشف مريض جديد أو متابعة</div>
+                        </div>
+                        <i class="fas fa-chevron-left text-white" style="opacity:0.6; font-size:13px; position:relative; z-index:1;"></i>
+                    </button>
                 </div>
 
                 <!-- Circular Stat Cards -->
@@ -5834,10 +6080,19 @@
                                         <textarea class="form-control" id="tabDiagnosis" rows="2" placeholder="التشخيص النهائي..."></textarea>
                                     </div>
                                     <div class="mb-3">
-                                        <label class="text-accent fw-bold"><i class="fas fa-calendar-plus"></i> موعد الإعادة القادمة</label>
-                                        <div class="input-group">
-                                            <input type="date" class="form-control border-accent-glow" id="tabNextApptDate">
-                                            <span class="input-group-text bg-dark text-white border-accent-glow fw-bold" id="tabNextApptDay" style="min-width: 100px; justify-content: center;">-</span>
+                                        <div class="next-appt-picker-wrap">
+                                            <div class="next-appt-picker-label">
+                                                <i class="fas fa-calendar-star"></i>
+                                                موعد الإعادة القادمة
+                                            </div>
+                                            <div class="next-appt-picker-row">
+                                                <input type="date" class="form-control next-appt-picker-input" id="tabNextApptDate">
+                                                <div class="next-appt-day-badge" id="tabNextApptDay">
+                                                    <span class="day-icon">📅</span>
+                                                    <span class="day-name">اليوم</span>
+                                                </div>
+                                            </div>
+                                            <div class="next-appt-status-container" id="tabNextApptStatus"></div>
                                         </div>
                                     </div>
                                 </div>
@@ -5977,10 +6232,19 @@
                                         <textarea class="form-control" id="tabDiagnosis" rows="2" placeholder="التشخيص الحالي..."></textarea>
                                     </div>
                                     <div class="mb-3">
-                                        <label class="text-accent fw-bold"><i class="fas fa-calendar-plus"></i> موعد الإعادة القادمة</label>
-                                        <div class="input-group">
-                                            <input type="date" class="form-control border-accent-glow" id="tabNextApptDate">
-                                            <span class="input-group-text bg-transparent text-white border-accent-glow fw-bold" id="tabNextApptDay" style="min-width: 100px; justify-content: center; background: rgba(0,0,0,0.3) !important;">-</span>
+                                        <div class="next-appt-picker-wrap" style="border-color: rgba(245,158,11,0.45); background: linear-gradient(135deg, rgba(245,158,11,0.15), rgba(251,191,36,0.08), rgba(6,182,212,0.12));">
+                                            <div class="next-appt-picker-label" style="background: linear-gradient(90deg, #fcd34d, #fbbf24, #f59e0b); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;">
+                                                <i class="fas fa-calendar-star" style="background: linear-gradient(135deg,#f59e0b,#fbbf24); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text;"></i>
+                                                موعد الإعادة القادمة
+                                            </div>
+                                            <div class="next-appt-picker-row">
+                                                <input type="date" class="form-control next-appt-picker-input" id="tabNextApptDate" style="border-color: rgba(245,158,11,0.45) !important;">
+                                                <div class="next-appt-day-badge" id="tabNextApptDay" style="background: linear-gradient(135deg, rgba(245,158,11,0.3), rgba(251,191,36,0.2)); border-color: rgba(251,191,36,0.5); color:#fcd34d;">
+                                                    <span class="day-icon">📅</span>
+                                                    <span class="day-name">اليوم</span>
+                                                </div>
+                                            </div>
+                                            <div class="next-appt-status-container" id="tabNextApptStatus"></div>
                                         </div>
                                     </div>
                                 </div>
@@ -6104,11 +6368,57 @@
         function setupNextApptLogic(dateId, dayId) {
             const dateInputs = document.querySelectorAll('#' + dateId);
             const dayDisplays = document.querySelectorAll('#' + dayId);
+            const statusContainers = document.querySelectorAll('#tabNextApptStatus');
             
             dateInputs.forEach((dateInput, index) => {
                 const dayDisplay = dayDisplays[index];
+                const statusContainer = statusContainers[index];
                 if (!dateInput || !dayDisplay) return;
                 
+                const updateBadge = (dateStr) => {
+                    if (dateStr) {
+                        const arabicDay = getArabicDay(dateStr);
+                        dayDisplay.innerHTML = `<span class="day-icon">⚡</span><span class="day-name">${arabicDay}</span>`;
+                        dayDisplay.classList.add('has-date');
+                        
+                        // Calculate appointments count for this date
+                        let count = 0;
+                        if (window.allAppointments) {
+                            Object.values(window.allAppointments).forEach(appt => {
+                                if (appt.date === dateStr) {
+                                    count++;
+                                }
+                            });
+                        }
+                        
+                        if (statusContainer) {
+                            if (count === 0) {
+                                statusContainer.innerHTML = `
+                                    <div class="next-appt-status-alert status-empty">
+                                        <i class="fas fa-check-circle"></i>
+                                        <span>اليوم متاح بالكامل (لا توجد مواعيد أخرى)</span>
+                                    </div>`;
+                            } else if (count <= 3) {
+                                statusContainer.innerHTML = `
+                                    <div class="next-appt-status-alert status-moderate">
+                                        <i class="fas fa-info-circle"></i>
+                                        <span>يوجد عدد ${count} حالات متابعة في هذا اليوم</span>
+                                    </div>`;
+                            } else {
+                                statusContainer.innerHTML = `
+                                    <div class="next-appt-status-alert status-busy">
+                                        <i class="fas fa-exclamation-triangle"></i>
+                                        <span>اليوم مزدحم: يوجد ${count} حالات متابعة محجوزة!</span>
+                                    </div>`;
+                            }
+                        }
+                    } else {
+                        dayDisplay.innerHTML = `<span class="day-icon">📅</span><span class="day-name">اليوم</span>`;
+                        dayDisplay.classList.remove('has-date');
+                        if (statusContainer) statusContainer.innerHTML = '';
+                    }
+                };
+
                 if (dateInput._flatpickr) return; // Prevent double initialization
                 
                 if (typeof flatpickr !== 'undefined') {
@@ -6117,11 +6427,7 @@
                         dateFormat: "Y-m-d",
                         minDate: "today",
                         onChange: function(selectedDates, dateStr, instance) {
-                            if (dateStr) {
-                                dayDisplay.textContent = getArabicDay(dateStr);
-                            } else {
-                                dayDisplay.textContent = '--';
-                            }
+                            updateBadge(dateStr);
                         },
                         onDayCreate: function(dObj, dStr, fp, dayElem) {
                             const dateString = fp.formatDate(dayElem.dateObj, "Y-m-d");
@@ -6134,18 +6440,14 @@
                                 });
                             }
                             if (count > 0) {
-                                dayElem.style.position = 'relative';
-                                dayElem.innerHTML += `<span style="position: absolute; bottom: 1px; right: 1px; background: #000; color: #fff; border-radius: 50%; width: 14px; height: 14px; font-size: 9px; line-height: 14px; text-align: center; font-weight: bold; box-shadow: 0 1px 3px rgba(0,0,0,0.5);">${count}</span>`;
+                                dayElem.classList.add('has-appointments-day');
+                                dayElem.innerHTML += `<span class="flatpickr-day-appt-badge">${count}</span>`;
                             }
                         }
                     });
                 } else {
                     dateInput.addEventListener('input', () => {
-                        if (dateInput.value) {
-                            dayDisplay.textContent = getArabicDay(dateInput.value);
-                        } else {
-                            dayDisplay.textContent = '--';
-                        }
+                        updateBadge(dateInput.value);
                     });
                 }
             });
@@ -6377,9 +6679,12 @@
                 if (ex.nextApptDate) {
                     const nad = document.getElementById('tabNextApptDate');
                     if (nad) {
-                        nad.value = ex.nextApptDate;
-                        const ndp = document.getElementById('tabNextApptDay');
-                        if (ndp) ndp.textContent = getArabicDay(ex.nextApptDate);
+                        if (nad._flatpickr) {
+                            nad._flatpickr.setDate(ex.nextApptDate, true);
+                        } else {
+                            nad.value = ex.nextApptDate;
+                            nad.dispatchEvent(new Event('input'));
+                        }
                     }
                 }
                 
