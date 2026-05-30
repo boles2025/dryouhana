@@ -3832,16 +3832,16 @@
                         </form>
                     </div>
                 </div>
-                <div class="card-panel">
+                
+                <div class="card-panel mt-4">
                     <div class="panel-header d-flex justify-content-between flex-wrap"><span><i
-                                class="fas fa-list-alt"></i> سجل المواعيد</span>
-                        <div class="d-flex gap-2"><input type="date" class="form-control form-control-sm"
-                                id="filterApptDate" oninput="window.filterAppointments()" style="width:150px"><button
-                                class="btn-sm-action btn-view-sm" onclick="window.clearApptFilter()"><i
-                                    class="fas fa-times"></i></button><button class="btn-sm-action btn-export-teal"
-                                onclick="window.exportAppointmentsExcel()"><i class="fas fa-file-excel"></i></button><button
-                                class="btn-sm-action btn-delete-sm" onclick="window.deleteCompletedAppointments()"
-                                title="حذف المواعيد المكتملة"><i class="fas fa-trash"></i></button>
+                                class="fas fa-list-alt"></i> سجل المواعيد الحالية والنشطة</span>
+                        <div class="d-flex gap-2 flex-wrap align-items-center">
+                            <input type="date" class="form-control form-control-sm"
+                                id="filterApptDate" oninput="window.filterAppointments()" style="width:150px">
+                            <button class="btn-sm-action btn-view-sm" onclick="window.clearApptFilter()" title="مسح الفلتر"><i class="fas fa-times"></i></button>
+                            <button class="btn-sm-action btn-export-teal" onclick="window.exportAppointmentsExcel()" title="تصدير Excel"><i class="fas fa-file-excel"></i></button>
+                            <button class="btn-sm-action" style="background:linear-gradient(135deg,#f59e0b,#d97706);color:#fff;border:none;" onclick="window.fixWronglyCompletedAppointments()" title="تصحيح المواعيد المُعلَّمة خاطئاً"><i class="fas fa-magic me-1"></i>تصحيح</button>
                         </div>
                     </div>
                     <div class="panel-body">
@@ -3860,6 +3860,35 @@
                                     </tr>
                                 </thead>
                                 <tbody id="appointmentsBody"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card-panel mt-4">
+                    <div class="panel-header d-flex justify-content-between flex-wrap"><span><i
+                                class="fas fa-calendar-check"></i> سجل المتابعات التي تمت (المكتملة)</span>
+                        <div class="d-flex gap-2">
+                            <button class="btn-sm-action btn-delete-sm" onclick="window.deleteCompletedAppointments()"
+                                title="حذف المواعيد المكتملة"><i class="fas fa-trash"></i> حذف المكتملة</button>
+                        </div>
+                    </div>
+                    <div class="panel-body">
+                        <div class="table-responsive">
+                            <table class="clinic-table">
+                                <thead>
+                                    <tr>
+                                        <th>#</th>
+                                        <th>المريض</th>
+                                        <th>التاريخ</th>
+                                        <th>الوقت</th>
+                                        <th>النوع</th>
+                                        <th>الحالة</th>
+                                        <th>ملاحظات</th>
+                                        <th>إجراءات</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="completedAppointmentsBody"></tbody>
                             </table>
                         </div>
                     </div>
@@ -4720,7 +4749,8 @@
                 const cell = document.createElement('div');
                 cell.className = 'calendar-cell' + (dateStr === todayStr ? ' today' : '');
 
-                const events = Object.values(window.allAppointments).filter(a => a.date === dateStr);
+                // إخفاء كل المواعيد المكتملة (أي حالة تبدأ بـ'تم') من الكاليندر - فقط المواعيد المنتظرة أو الملغاة تظهر
+                const events = Object.values(window.allAppointments).filter(a => a.date === dateStr && !(a.status && a.status.startsWith('تم')));
 
                 let eventsHTML = '';
                 events.slice(0, 3).forEach(e => {
@@ -5255,9 +5285,17 @@
                     }
                 }
             }, 15000); // run cleanup 15 seconds after app load
+
+            // ═══ تصحيح تلقائي للبيانات الخاطئة: يُصحح المواعيد التي وُسمت خاطئاً كمكتملة ═══
+            setTimeout(() => {
+                if (window.fixWronglyCompletedAppointments) {
+                    window.fixWronglyCompletedAppointments();
+                }
+            }, 8000); // بعد 8 ثوانٍ: كافية لتحميل كل بيانات Firebase
         }
 
         function autoUpdateAppointmentStatuses() {
+            const todayStr = getToday();
             Object.entries(window.allAppointments).forEach(async ([key, appt]) => {
                 // Auto-link online appointments if phone matches an existing patient
                 if (!appt.patientId && appt.phone) {
@@ -5271,24 +5309,77 @@
                     }
                 }
 
-                if (!appt.status || !appt.status.startsWith('تم')) {
-                    const matchingExam = Object.values(window.allExaminations).find(e => 
-                        e.patientId === appt.patientId && e.examDate === appt.date
-                    );
-                    if (matchingExam) {
-                        const targetStatus = (matchingExam.visitType && (matchingExam.visitType.includes('متابعة') || matchingExam.visitType.includes('إعادة'))) ? 'تم الإعادة' : 'تم الكشف';
-                        await update(ref(firebaseDb, 'appointments/' + key), { status: targetStatus });
-                    }
+                // ⚡ لا تلمس المواعيد المستقبلية إطلاقاً - فقط عالج مواعيد اليوم أو الماضية
+                if (!appt.date || appt.date > todayStr) return;
+
+                // لا تعدل الموعد إذا كانت حالته بالفعل مكتملة
+                if (appt.status && appt.status.startsWith('تم')) return;
+
+                // ابحث في السجل الطبي: هل يوجد فحص فعلي للمريض بنفس تاريخ الموعد بالضبط؟
+                if (!appt.patientId) return; // لا يمكن التحقق بدون patientId
+
+                // البحث عن فحص للمريض بتاريخ >= تاريخ الموعد
+                // (المريض قد يأتي في يوم مختلف عن موعده المحجوز)
+                const matchingExam = Object.values(window.allExaminations).find(e =>
+                    e.patientId === appt.patientId && e.examDate >= appt.date
+                );
+
+                // فقط لو وُجد فحص حقيقي بعد أو في تاريخ الموعد، غيّر الحالة
+                if (matchingExam) {
+                    const targetStatus = (matchingExam.visitType && (matchingExam.visitType.includes('متابعة') || matchingExam.visitType.includes('إعادة'))) ? 'تمت المتابعة' : 'تم الكشف';
+                    await update(ref(firebaseDb, 'appointments/' + key), { status: targetStatus });
                 }
+                // إذا لم يوجد فحص بتاريخ مناسب → الموعد يبقى كما هو
             });
         }
 
+        // ═══ تصحيح البيانات الخاطئة: يُعيد الحالة إلى 'منتظر' لأي موعد وُسم مكتملاً بدون فحص فعلي ═══
+        window.fixWronglyCompletedAppointments = async function() {
+            const todayStr = getToday();
+            let fixedCount = 0;
+
+            for (const [key, appt] of Object.entries(window.allAppointments || {})) {
+                // اهتم فقط بالمواعيد التي حالتها "تم ..." 
+                if (!appt.status || !appt.status.startsWith('تم')) continue;
+
+                // إذا كان الموعد في المستقبل → مستحيل أن يكون اكتمل → أعد حالته
+                if (appt.date > todayStr) {
+                    await update(ref(firebaseDb, 'appointments/' + key), { status: 'منتظر' });
+                    fixedCount++;
+                    continue;
+                }
+
+                // إذا كان الموعد في الماضي أو اليوم: تحقق هل يوجد فحص فعلي بنفس التاريخ والمريض
+                if (!appt.patientId) continue; // بدون patientId لا يمكن التحقق
+
+                // تحقق: هل يوجد فحص بتاريخ >= تاريخ الموعد (نفس منطق التحديث)
+                const hasRealExam = Object.values(window.allExaminations || {}).some(e =>
+                    e.patientId === appt.patientId && e.examDate >= appt.date
+                );
+
+                if (!hasRealExam) {
+                    // لا يوجد فحص بعد تاريخ الموعد → الوسم كان خاطئاً → أعد الحالة إلى منتظر
+                    await update(ref(firebaseDb, 'appointments/' + key), { status: 'منتظر' });
+                    fixedCount++;
+                }
+            }
+
+            if (fixedCount > 0) {
+                console.log(`[Fix] تم تصحيح ${fixedCount} موعد كان موسوماً خاطئاً`);
+                showToast(`✅ تم تصحيح ${fixedCount} موعد كان مُعلَّماً خاطئاً`, 'success');
+            }
+        };
+
         window.updateTodayAppointmentStatus = async function(patientId, dateStr, visitType) {
             if (!patientId || !dateStr) return;
-            const targetStatus = (visitType && (visitType.includes('متابعة') || visitType.includes('إعادة'))) ? 'تم الإعادة' : 'تم الكشف';
+            const isFollowUp = visitType && (visitType.includes('متابعة') || visitType.includes('إعادة'));
+            const targetStatus = isFollowUp ? 'تمت المتابعة' : 'تم الكشف';
+            
+            // البحث عن موعد معلق للمريض في نفس تاريخ الكشف الحالي فقط لضمان سلامة مواعيد الإعادة المستقبلية وعدم تغييرها
             const targetAppts = Object.entries(window.allAppointments || {}).filter(([ak, appt]) => {
                 return appt.patientId === patientId && appt.date === dateStr && (!appt.status || !appt.status.startsWith('تم'));
             });
+            
             for (const [ak, appt] of targetAppts) {
                 await update(ref(firebaseDb, 'appointments/' + ak), { status: targetStatus });
             }
@@ -6111,16 +6202,9 @@
                                 </div>
                                 <div class="clinical-section border-danger-glow">
                                     <div class="clinical-title"><i class="fas fa-pills"></i> الروشتة الطبية (Prescription)</div>
-                                    <div class="prescription-builder mb-3">
-                                        <div class="row g-2 align-items-end">
-                                            <div class="col-md-4"><label class="small">الدواء</label><input type="text" class="form-control form-control-sm" id="p-drug" placeholder="اسم الدواء"></div>
-                                            <div class="col-md-2"><label class="small">الجرعة</label><input type="text" class="form-control form-control-sm" id="p-dose" placeholder="500mg"></div>
-                                            <div class="col-md-3"><label class="small">التكرار</label><input type="text" class="form-control form-control-sm" id="p-freq" placeholder="3 مرات"></div>
-                                            <div class="col-md-2"><label class="small">المدة</label><input type="text" class="form-control form-control-sm" id="p-dur" placeholder="اسبوع"></div>
-                                            <div class="col-md-1"><button type="button" class="btn-gradient btn-sm w-100" onclick="window.addMedToTemp()"><i class="fas fa-plus"></i></button></div>
-                                        </div>
+                                    <div class="mb-2">
+                                        <textarea class="form-control" id="tabPrescriptionText" rows="7" placeholder="اكتب الروشتة الطبية هنا...&#10;مثال:&#10;- Concor 5mg صباح&#10;- Aspirin 100mg مساء&#10;- Lasix 40mg صباح" style="font-size:14px; line-height:1.8; font-weight:600;"></textarea>
                                     </div>
-                                    <div id="tempPrescList" class="mb-3"></div>
                                     <div class="mb-3">
                                         <label>تعليمات إضافية (الخطة العلاجية)</label>
                                         <textarea class="form-control" id="tabTreatment" rows="3" placeholder="الخطة العلاجية والتعليمات..."></textarea>
@@ -6263,16 +6347,9 @@
                                 </div>
                                 <div class="clinical-section border-warning-glow">
                                     <div class="clinical-title"><i class="fas fa-pills"></i> الروشتة الطبية</div>
-                                    <div class="prescription-builder mb-3">
-                                        <div class="row g-2 align-items-end">
-                                            <div class="col-md-4"><label class="small">الدواء</label><input type="text" class="form-control form-control-sm" id="p-drug" placeholder="اسم الدواء"></div>
-                                            <div class="col-md-2"><label class="small">الجرعة</label><input type="text" class="form-control form-control-sm" id="p-dose" placeholder="500mg"></div>
-                                            <div class="col-md-3"><label class="small">التكرار</label><input type="text" class="form-control form-control-sm" id="p-freq" placeholder="3 مرات"></div>
-                                            <div class="col-md-2"><label class="small">المدة</label><input type="text" class="form-control form-control-sm" id="p-dur" placeholder="اسبوع"></div>
-                                            <div class="col-md-1"><button type="button" class="btn-gradient btn-sm w-100" onclick="window.addMedToTemp()"><i class="fas fa-plus"></i></button></div>
-                                        </div>
+                                    <div class="mb-2">
+                                        <textarea class="form-control" id="tabPrescriptionText" rows="7" placeholder="اكتب الروشتة الطبية هنا...&#10;مثال:&#10;- Concor 5mg صباح&#10;- Aspirin 100mg مساء&#10;- Lasix 40mg صباح" style="font-size:14px; line-height:1.8; font-weight:600;"></textarea>
                                     </div>
-                                    <div id="tempPrescList" class="mb-3"></div>
                                     <div class="mb-3">
                                         <label>تعليمات إضافية (الخطة العلاجية)</label>
                                         <textarea class="form-control" id="tabTreatment" rows="3" placeholder="الخطة العلاجية والتعليمات..."></textarea>
@@ -6502,6 +6579,7 @@
             });
 
             const vt = document.getElementById('tabVisitType').value;
+            const prescriptionText = (document.getElementById('tabPrescriptionText')?.value || '').trim();
             const data = {
                 patientId,
                 patientName: window.globalSelectedPatientData?.name || '',
@@ -6521,6 +6599,7 @@
                 diagnosis: document.getElementById('tabDiagnosis').value,
                 ecg: document.getElementById('tabECG')?.value || '',
                 treatmentPlan: document.getElementById('tabTreatment').value,
+                prescriptionText,
                 echo: echoData,
                 nextApptDate: document.getElementById('tabNextApptDate')?.value || '',
                 createdAt: Date.now()
@@ -6578,18 +6657,17 @@
                 if (editKey) {
                     await update(ref(firebaseDb, 'examinations/' + editKey), data);
                     
-                    // Update linked prescription if exists
+                    // Update linked prescription (text-based)
                     const linkedPrescEntry = Object.entries(window.allPrescriptions).find(([pk, p]) => p.examId === editKey);
                     if (linkedPrescEntry) {
                         await update(ref(firebaseDb, 'prescriptions/' + linkedPrescEntry[0]), {
-                            medications: window.tempMedications || [],
+                            prescriptionText,
                             prescriptionDate: data.examDate
                         });
-                    } else if (window.tempMedications && window.tempMedications.length > 0) {
-                        // Create new one if none existed but meds are now added
+                    } else if (prescriptionText) {
                         await set(push(ref(firebaseDb, 'prescriptions')), {
                             patientId, patientName: data.patientName, prescriptionDate: data.examDate,
-                            medications: window.tempMedications, examId: editKey, createdAt: Date.now()
+                            prescriptionText, examId: editKey, createdAt: Date.now()
                         });
                     }
                     showToast('تم تحديث السجل بنجاح ✓', 'success');
@@ -6600,13 +6678,15 @@
                     const newExamRef = push(ref(firebaseDb, 'examinations'));
                     await set(newExamRef, data);
                     
-                    if (window.tempMedications && window.tempMedications.length > 0) {
+                    // Save prescription as text
+                    if (prescriptionText) {
                         await set(push(ref(firebaseDb, 'prescriptions')), {
                             patientId,
                             patientName: data.patientName,
                             prescriptionDate: data.examDate,
-                            medications: window.tempMedications,
+                            prescriptionText,
                             examId: newExamRef.key,
+                            createdAt: Date.now()
                         });
                     }
 
@@ -6666,6 +6746,24 @@
                 const ecgEl = document.getElementById('tabECG');
                 if (ecgEl) ecgEl.value = ex.ecg || '';
                 document.getElementById('tabTreatment').value = ex.treatmentPlan || '';
+                
+                // Fill prescription text
+                const prescEl = document.getElementById('tabPrescriptionText');
+                if (prescEl) {
+                    if (ex.prescriptionText) {
+                        prescEl.value = ex.prescriptionText;
+                    } else {
+                        // Legacy: convert medications array to text
+                        const linkedPresc = Object.values(window.allPrescriptions || {}).find(p => p.examId === key);
+                        if (linkedPresc && linkedPresc.prescriptionText) {
+                            prescEl.value = linkedPresc.prescriptionText;
+                        } else if (linkedPresc && linkedPresc.medications) {
+                            prescEl.value = (linkedPresc.medications || []).map(m => `- ${m.name} ${m.dose} ${m.frequency} ${m.duration}`).join('\n');
+                        } else {
+                            prescEl.value = '';
+                        }
+                    }
+                }
                 
                 window.tabExamTempAttachments = ex.attachments ? [...ex.attachments] : [];
                 setTimeout(() => window.renderTabExamAttachmentsList(), 150);
@@ -7708,25 +7806,39 @@
 
         function renderAppointmentsTable(filterDate) {
             const tbody = document.getElementById('appointmentsBody');
+            const completedTbody = document.getElementById('completedAppointmentsBody');
             if (!tbody) return;
-            let appts = Object.entries(window.allAppointments);
+            let allAppts = Object.entries(window.allAppointments);
             // Filter out orphans except online bookings
-            appts = appts.filter(([k, v]) => !v.patientId || window.allPatients[v.patientId] || (v.notes && v.notes.includes('أونلاين')));
+            allAppts = allAppts.filter(([k, v]) => !v.patientId || window.allPatients[v.patientId] || (v.notes && v.notes.includes('أونلاين')));
 
-            if (filterDate) appts = appts.filter(([k, v]) => v.date === filterDate);
-            appts.sort((a, b) => (b[1].createdAt || 0) - (a[1].createdAt || 0));
-            tbody.innerHTML = appts.length === 0 ?
-                '<tr><td colspan="8" class="text-center text-muted py-4">لا توجد مواعيد</td></tr>' :
-                appts.map(([key, a], i) => {
-                    const statusBadge = (a.status === 'تم' || a.status === 'تم الكشف' || a.status === 'تم الإعادة') ? 'tag-done' : a.status === 'ملغي' ? 'tag-urgent' :
-                        'tag-normal';
-                    const typeTag = a.isFollowUp ? 'tag-followup' : 'tag-normal';
-                    const isOnline = a.notes && a.notes.includes('حجز أونلاين');
-                    const nameHtml = a.patientId
-                        ? `<strong style="cursor:pointer; color:var(--primary); text-decoration:underline;" onclick="window.viewPatientRecord('${a.patientId}')" title="فتح ملف المريض">${a.patientName}</strong>`
-                        : `<strong style="cursor:pointer; color:var(--accent); text-decoration:underline;" onclick="window.viewPatientFromDay(null, '${key}')" title="المريض غير مسجل، اضغط لتسجيله وتعبئة بياناته تلقائياً">${a.patientName} <i class="fas fa-user-plus ms-1"></i></strong>`;
-                    return `<tr><td>${i + 1}</td><td>${nameHtml}${isOnline ? ' <span class="badge bg-info" style="font-size:9px">حجز نت</span>' : ''}</td><td>${a.date}</td><td>${a.time}</td><td><span class="agenda-type-tag ${typeTag}">${a.type}</span></td><td><span class="agenda-type-tag ${statusBadge}">${a.status}</span></td><td>${a.notes || '-'}</td><td><div class="d-flex gap-1"><button class="btn-sm-action btn-edit-sm" onclick="window.openEditApptModal('${key}')" title="تعديل"><i class="fas fa-edit"></i></button><button class="btn-sm-action btn-view-sm" onclick="window.editApptStatus('${key}','${a.status}')" title="تغيير الحالة"><i class="fas fa-sync-alt"></i></button><button class="btn-sm-action btn-delete-sm" onclick="window.deleteAppt('${key}')" title="حذف"><i class="fas fa-trash"></i></button></div></td></tr>`;
-                }).join('');
+            if (filterDate) allAppts = allAppts.filter(([k, v]) => v.date === filterDate);
+            allAppts.sort((a, b) => (b[1].createdAt || 0) - (a[1].createdAt || 0));
+
+            // المواعيد المكتملة: أي موعد حالته تبدأ بـ'تم' تنتقل للجدول السفلي (تم الكشف / تمت المتابعة / تم الإعادة / تم)
+            // المواعيد النشطة: كل ما عدا ذلك (منتظر / ملغي / بدون حالة) تبقى في الجدول العلوي
+            const completedAppts = allAppts.filter(([k, a]) => a.status && a.status.startsWith('تم'));
+            const pendingAppts = allAppts.filter(([k, a]) => !a.status || !a.status.startsWith('تم'));
+
+            const generateRowHtml = ([key, a], i) => {
+                const statusBadge = (a.status === 'تم' || a.status === 'تم الكشف' || a.status === 'تم الإعادة' || a.status === 'تمت المتابعة') ? 'tag-done' : a.status === 'ملغي' ? 'tag-urgent' : 'tag-normal';
+                const typeTag = a.isFollowUp ? 'tag-followup' : 'tag-normal';
+                const isOnline = a.notes && a.notes.includes('حجز أونلاين');
+                const nameHtml = a.patientId
+                    ? `<strong style="cursor:pointer; color:var(--primary); text-decoration:underline;" onclick="window.viewPatientRecord('${a.patientId}')" title="فتح ملف المريض">${a.patientName}</strong>`
+                    : `<strong style="cursor:pointer; color:var(--accent); text-decoration:underline;" onclick="window.viewPatientFromDay(null, '${key}')" title="المريض غير مسجل، اضغط لتسجيله وتعبئة بياناته تلقائياً">${a.patientName} <i class="fas fa-user-plus ms-1"></i></strong>`;
+                return `<tr><td>${i + 1}</td><td>${nameHtml}${isOnline ? ' <span class="badge bg-info" style="font-size:9px">حجز نت</span>' : ''}</td><td>${a.date}</td><td>${a.time}</td><td><span class="agenda-type-tag ${typeTag}">${a.type}</span></td><td><span class="agenda-type-tag ${statusBadge}">${a.status}</span></td><td>${a.notes || '-'}</td><td><div class="d-flex gap-1"><button class="btn-sm-action btn-edit-sm" onclick="window.openEditApptModal('${key}')" title="تعديل"><i class="fas fa-edit"></i></button><button class="btn-sm-action btn-view-sm" onclick="window.editApptStatus('${key}','${a.status}')" title="تغيير الحالة"><i class="fas fa-sync-alt"></i></button><button class="btn-sm-action btn-delete-sm" onclick="window.deleteAppt('${key}')" title="حذف"><i class="fas fa-trash"></i></button></div></td></tr>`;
+            };
+
+            tbody.innerHTML = pendingAppts.length === 0 ?
+                '<tr><td colspan="8" class="text-center text-muted py-4">لا توجد مواعيد نشطة</td></tr>' :
+                pendingAppts.map((appt, i) => generateRowHtml(appt, i)).join('');
+
+            if (completedTbody) {
+                completedTbody.innerHTML = completedAppts.length === 0 ?
+                    '<tr><td colspan="8" class="text-center text-muted py-4">لا توجد متابعات مكتملة بعد</td></tr>' :
+                    completedAppts.map((appt, i) => generateRowHtml(appt, i)).join('');
+            }
         }
 
         window.openEditApptModal = function (key) {
@@ -7777,12 +7889,9 @@
             renderAppointmentsTable(null);
         };
         window.editApptStatus = async function (key, curr) {
-            const statuses = ['منتظر', 'تم الكشف', 'تم الإعادة', 'ملغي'];
+            const statuses = ['منتظر', 'تم الكشف', 'تمت المتابعة', 'تم الإعادة', 'ملغي'];
             let idx = statuses.indexOf(curr);
-            if (idx === -1) {
-                // If it was legacy 'تم', treat as 'تم الكشف' or 'تم الإعادة'
-                idx = 1;
-            }
+            if (idx === -1) idx = 0;
             const next = statuses[(idx + 1) % statuses.length];
             await update(ref(firebaseDb, 'appointments/' + key), { status: next });
             showToast('تم تحديث الحالة: ' + next, 'info');
@@ -8314,20 +8423,28 @@
         function renderAllPrescriptions() {
             const tbody = document.getElementById('prescriptionsBody');
             if (!tbody) return;
-            const prescs = Object.entries(window.allPrescriptions).sort((a, b) => (b[1].createdAt || 0) - (a[1].createdAt ||
-                0));
+            const prescs = Object.entries(window.allPrescriptions).sort((a, b) => (b[1].createdAt || 0) - (a[1].createdAt || 0));
             tbody.innerHTML = prescs.length === 0 ?
                 '<tr><td colspan="5" class="text-center text-muted py-4">لا توجد روشتات</td></tr>' :
-                prescs.map(([key, p], i) =>
-                    `<tr><td>${i + 1}</td><td>${p.patientName}</td><td>${p.prescriptionDate}</td><td>${(p.medications || []).length} أدوية</td><td><div class="d-flex gap-1"><button class="btn-sm-action btn-view-sm" onclick="window.viewPrescription('${key}')"><i class="fas fa-eye"></i></button><button class="btn-sm-action btn-edit-sm" onclick="window.editPrescription('${key}')"><i class="fas fa-edit"></i></button><button class="btn-sm-action btn-print-teal" onclick="window.printSinglePrescription('${key}')"><i class="fas fa-print"></i></button><button class="btn-sm-action btn-delete-sm" onclick="window.deletePrescription('${key}')"><i class="fas fa-trash"></i></button></div></td></tr>`
-                ).join('');
+                prescs.map(([key, p], i) => {
+                    const summary = p.prescriptionText
+                        ? p.prescriptionText.substring(0, 40) + (p.prescriptionText.length > 40 ? '...' : '')
+                        : ((p.medications || []).length + ' أدوية');
+                    return `<tr><td>${i + 1}</td><td>${p.patientName}</td><td>${p.prescriptionDate}</td><td style="font-size:12px;max-width:200px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis">${summary}</td><td><div class="d-flex gap-1"><button class="btn-sm-action btn-view-sm" onclick="window.viewPrescription('${key}')"><i class="fas fa-eye"></i></button><button class="btn-sm-action btn-edit-sm" onclick="window.editPrescription('${key}')"><i class="fas fa-edit"></i></button><button class="btn-sm-action btn-print-teal" onclick="window.printSinglePrescription('${key}')"><i class="fas fa-print"></i></button><button class="btn-sm-action btn-delete-sm" onclick="window.deletePrescription('${key}')"><i class="fas fa-trash"></i></button></div></td></tr>`;
+                }).join('');
         }
         window.viewPrescription = function (key) {
             const pr = window.allPrescriptions[key];
             if (!pr) return;
-            const meds = pr.medications || [];
+            let contentHtml = '';
+            if (pr.prescriptionText) {
+                contentHtml = `<pre style="white-space:pre-wrap;font-family:Cairo,sans-serif;font-size:15px;line-height:2;background:rgba(0,0,0,0.03);padding:16px;border-radius:12px;border:1px solid #e2e8f0">${pr.prescriptionText}</pre>`;
+            } else {
+                const meds = pr.medications || [];
+                contentHtml = `<table class="clinic-table"><thead><tr><th>الدواء</th><th>الجرعة</th><th>التكرار</th><th>المدة</th></tr></thead><tbody>${meds.map(m => `<tr><td>${m.name}</td><td>${m.dose}</td><td>${m.frequency}</td><td>${m.duration}</td></tr>`).join('')}</tbody></table>`;
+            }
             document.getElementById('examViewBody').innerHTML =
-                `<h5>${pr.patientName}</h5><p>التاريخ: ${pr.prescriptionDate}</p><table class="clinic-table"><thead><tr><th>الدواء</th><th>الجرعة</th><th>التكرار</th><th>المدة</th></tr></thead><tbody>${meds.map(m => `<tr><td>${m.name}</td><td>${m.dose}</td><td>${m.frequency}</td><td>${m.duration}</td></tr>`).join('')}</tbody></table>`;
+                `<h5 class="fw-bold mb-1">${pr.patientName}</h5><p class="text-muted mb-3">التاريخ: ${pr.prescriptionDate}</p>${contentHtml}`;
             showModal('examViewModal');
         };
 
@@ -8388,12 +8505,36 @@
         window.printSinglePrescription = function (key) {
             const pr = window.allPrescriptions[key];
             if (!pr) return;
-            const meds = pr.medications || [];
             const logo = window.clinicSettings.clinicLogo || '';
+            const doctorName = window.clinicSettings.doctorName || '';
+            const specialty = window.clinicSettings.specialty || '';
+            const clinicName = window.clinicSettings.clinicName || '';
+            const clinicPhone = window.clinicSettings.clinicPhone || '';
+            let prescBody = '';
+            if (pr.prescriptionText) {
+                // نص حر - طباعة سطر بسطر
+                const lines = pr.prescriptionText.split('\n').filter(l => l.trim());
+                prescBody = `<div style="margin-top:20px">${lines.map((line, i) => `<div style="padding:10px 14px;margin-bottom:8px;border-right:4px solid #1e40af;background:#f8fafc;border-radius:6px;font-size:16px;font-weight:700">${line}</div>`).join('')}</div>`;
+            } else {
+                const meds = pr.medications || [];
+                prescBody = `<table style="width:100%;border-collapse:collapse;margin-top:16px"><thead><tr style="background:#1e40af;color:#fff"><th style="padding:8px;border:1px solid #ddd">الدواء</th><th style="padding:8px;border:1px solid #ddd">الجرعة</th><th style="padding:8px;border:1px solid #ddd">التكرار</th><th style="padding:8px;border:1px solid #ddd">المدة</th></tr></thead><tbody>${meds.map(m => `<tr><td style="padding:8px;border:1px solid #ddd">${m.name}</td><td style="padding:8px;border:1px solid #ddd">${m.dose}</td><td style="padding:8px;border:1px solid #ddd">${m.frequency}</td><td style="padding:8px;border:1px solid #ddd">${m.duration}</td></tr>`).join('')}</tbody></table>`;
+            }
             const pw = window.open('', '_blank', 'width=900,height=700');
-            pw.document.write(
-                `<html dir="rtl"><head><meta charset="UTF-8"><style>body{font-family:Cairo,sans-serif;padding:20px;color:#000}table{width:100%;border-collapse:collapse}th,td{border:1px solid #ddd;padding:8px}th{background:#e5e7eb}</style></head><body>${logo ? `<div style="text-align:center"><img src="${logo}" style="max-width:100px"></div>` : ''}<h3 style="text-align:center">روشتة</h3><p><strong>المريض:</strong> ${pr.patientName} | <strong>التاريخ:</strong> ${pr.prescriptionDate}</p><table><thead><tr><th>الدواء</th><th>الجرعة</th><th>التكرار</th><th>المدة</th></tr></thead><tbody>${meds.map(m => `<tr><td>${m.name}</td><td>${m.dose}</td><td>${m.frequency}</td><td>${m.duration}</td></tr>`).join('')}</tbody></table></body></html>`
-            );
+            pw.document.write(`<html dir="rtl"><head><meta charset="UTF-8"><style>body{font-family:Cairo,sans-serif;padding:30px;color:#000;max-width:700px;margin:auto}hr{border:2px solid #1e40af;margin:16px 0}</style></head><body>
+                ${logo ? `<div style="text-align:center;margin-bottom:10px"><img src="${logo}" style="max-width:90px"></div>` : ''}
+                <div style="text-align:center;margin-bottom:16px">
+                    <div style="font-size:20px;font-weight:900;color:#1e40af">${doctorName}</div>
+                    <div style="font-size:14px;color:#555">${specialty}${clinicName ? ' | ' + clinicName : ''}${clinicPhone ? ' | ☎ ' + clinicPhone : ''}</div>
+                </div>
+                <hr>
+                <div style="display:flex;justify-content:space-between;margin-bottom:10px">
+                    <span><strong>المريض:</strong> ${pr.patientName}</span>
+                    <span><strong>التاريخ:</strong> ${pr.prescriptionDate}</span>
+                </div>
+                <hr>
+                <div style="font-size:18px;font-weight:900;color:#1e40af;margin-bottom:12px">☤ الروشتة الطبية</div>
+                ${prescBody}
+            </body></html>`);
             pw.document.close();
             setTimeout(() => pw.print(), 500);
         };
