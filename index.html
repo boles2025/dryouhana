@@ -3002,46 +3002,69 @@
             position: fixed;
             bottom: 24px;
             left: 24px;
-            z-index: 9999;
+            z-index: 99999;
             display: flex;
             flex-direction: column;
-            gap: 10px;
+            gap: 8px;
+            min-width: 220px;
+            max-width: 300px;
+            pointer-events: none;
         }
 
         .toast-msg {
-            background: rgba(30, 41, 59, 0.9);
-            backdrop-filter: blur(18px);
-            -webkit-backdrop-filter: blur(18px);
+            background: rgba(15, 23, 42, 0.97);
+            backdrop-filter: blur(24px);
+            -webkit-backdrop-filter: blur(24px);
             color: #fff;
-            padding: 14px 22px;
-            border-radius: 13px;
-            font-size: 13px;
+            padding: 8px 14px;
+            border-radius: 10px;
+            font-size: 12px;
             font-weight: 700;
-            box-shadow: 0 12px 40px rgba(0, 0, 0, 0.3);
-            animation: toastSlide 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3), 0 2px 8px rgba(0,0,0,0.2);
+            animation: toastSlide 0.35s cubic-bezier(0.34, 1.56, 0.64, 1) both;
             display: flex;
             align-items: center;
             gap: 10px;
-            border: 1px solid rgba(255, 255, 255, 0.15);
+            border: 1.5px solid rgba(255, 255, 255, 0.12);
+            border-left: 4px solid rgba(255, 255, 255, 0.3);
+            pointer-events: auto;
+            direction: rtl;
+        }
+
+        .toast-msg i {
+            font-size: 16px;
+            flex-shrink: 0;
         }
 
         .toast-msg.success {
-            background: linear-gradient(135deg, rgba(16, 185, 129, 0.9), rgba(5, 150, 105, 0.9));
+            background: linear-gradient(135deg, rgba(5, 150, 105, 0.97), rgba(4, 120, 87, 0.97));
+            border-left-color: #34d399;
+            box-shadow: 0 4px 20px rgba(16, 185, 129, 0.25), 0 2px 8px rgba(0,0,0,0.2);
         }
 
         .toast-msg.error {
-            background: linear-gradient(135deg, rgba(239, 68, 68, 0.9), rgba(220, 38, 38, 0.9));
+            background: linear-gradient(135deg, rgba(220, 38, 38, 0.97), rgba(185, 28, 28, 0.97));
+            border-left-color: #fca5a5;
+            box-shadow: 0 4px 20px rgba(239, 68, 68, 0.25), 0 2px 8px rgba(0,0,0,0.2);
+        }
+
+        .toast-msg.info {
+            background: linear-gradient(135deg, rgba(37, 99, 235, 0.97), rgba(29, 78, 216, 0.97));
+            border-left-color: #93c5fd;
+            box-shadow: 0 4px 20px rgba(59, 130, 246, 0.25), 0 2px 8px rgba(0,0,0,0.2);
         }
 
         @keyframes toastSlide {
             from {
-                transform: translateX(-80px);
+                transform: translateX(-120px);
                 opacity: 0;
+                scale: 0.95;
             }
 
             to {
                 transform: translateX(0);
                 opacity: 1;
+                scale: 1;
             }
         }
 
@@ -5802,16 +5825,19 @@
         function showToast(msg, type = 'info') {
             const container = document.getElementById('toastContainer');
             if (!container) return;
-            const icons = { success: 'fa-check-circle', error: 'fa-exclamation-circle', info: 'fa-info-circle' };
+            const icons = { success: 'fa-check-circle', error: 'fa-times-circle', info: 'fa-bell' };
             const toast = document.createElement('div');
             toast.className = `toast-msg ${type}`;
-            toast.innerHTML = `<i class="fas ${icons[type]}"></i>${msg}`;
+            toast.innerHTML = `<i class="fas ${icons[type] || 'fa-info-circle'}"></i><span style="flex:1">${msg}</span>`;
             container.appendChild(toast);
+            const duration = type === 'error' ? 4500 : 3000;
             setTimeout(() => {
+                toast.style.animation = 'none';
+                toast.style.transition = 'opacity 0.4s, transform 0.4s';
                 toast.style.opacity = '0';
-                toast.style.transition = 'opacity 0.5s';
-                setTimeout(() => toast.remove(), 500);
-            }, 3500);
+                toast.style.transform = 'translateX(-80px)';
+                setTimeout(() => toast.remove(), 400);
+            }, duration);
         }
 
         function getToday() {
@@ -7542,8 +7568,11 @@
 
         window.saveTabExam = async function (e, type) {
             if (e) e.preventDefault();
+            if (window.isSavingExam) return;
             const patientId = window.globalSelectedPatientKey;
             if (!patientId) return showToast('لم يتم اختيار مريض', 'error');
+
+            window.isSavingExam = true;
 
             const echoData = {};
             document.querySelectorAll('.echo-field').forEach(el => {
@@ -7579,7 +7608,6 @@
 
             const finalAttachments = [];
             if (window.tabExamTempAttachments && window.tabExamTempAttachments.length > 0) {
-                showToast('جاري رفع المرفقات سحابياً بقوة...', 'info');
                 const uploadPromises = window.tabExamTempAttachments.map(async (att) => {
                     if (att.isNew) {
                         try {
@@ -7627,32 +7655,35 @@
 
             try {
                 if (editKey) {
-                    await update(ref(firebaseDb, 'examinations/' + editKey), data);
+                    update(ref(firebaseDb, 'examinations/' + editKey), data);
 
-                    // Update linked prescription (text-based)
+                    // Update linked prescription (text-based) - fire and forget
                     const linkedPrescEntry = Object.entries(window.allPrescriptions).find(([pk, p]) => p.examId === editKey);
                     if (linkedPrescEntry) {
-                        await update(ref(firebaseDb, 'prescriptions/' + linkedPrescEntry[0]), {
-                            prescriptionText,
-                            prescriptionDate: data.examDate
-                        });
+                        if (prescriptionText) {
+                            update(ref(firebaseDb, 'prescriptions/' + linkedPrescEntry[0]), {
+                                prescriptionText,
+                                prescriptionDate: data.examDate
+                            });
+                        } else {
+                            remove(ref(firebaseDb, 'prescriptions/' + linkedPrescEntry[0]));
+                        }
                     } else if (prescriptionText) {
-                        await set(push(ref(firebaseDb, 'prescriptions')), {
+                        set(push(ref(firebaseDb, 'prescriptions')), {
                             patientId, patientName: data.patientName, prescriptionDate: data.examDate,
                             prescriptionText, examId: editKey, createdAt: Date.now()
                         });
                     }
-                    showToast('تم تحديث السجل بنجاح ✓', 'success');
 
-                    // Auto update appointment status
-                    await window.updateTodayAppointmentStatus(patientId, data.examDate, data.visitType);
+                    showToast('تم تحديث السجل ✓', 'success');
+                    window.updateTodayAppointmentStatus(patientId, data.examDate, data.visitType);
                 } else {
                     const newExamRef = push(ref(firebaseDb, 'examinations'));
-                    await set(newExamRef, data);
+                    set(newExamRef, data);
 
-                    // Save prescription as text
+                    // Save prescription as text - fire and forget
                     if (prescriptionText) {
-                        await set(push(ref(firebaseDb, 'prescriptions')), {
+                        set(push(ref(firebaseDb, 'prescriptions')), {
                             patientId,
                             patientName: data.patientName,
                             prescriptionDate: data.examDate,
@@ -7663,16 +7694,15 @@
                     }
 
                     if (data.nextApptDate) {
-                        await set(push(ref(firebaseDb, 'appointments')), {
+                        set(push(ref(firebaseDb, 'appointments')), {
                             patientId, patientName: data.patientName, date: data.nextApptDate,
                             time: '18:00', type: 'متابعة عادية',
-                            status: 'منتظر', isFollowUp: true, notes: '(موعد تم تحديده من خلال الدكتور )', createdAt: Date.now()
+                            status: 'منتظر', isFollowUp: true, notes: '(موعد تم تحديده من خلال الدكتور)', createdAt: Date.now()
                         });
                     }
-                    showToast('تم حفظ السجل بنجاح ✓', 'success');
 
-                    // Auto update appointment status
-                    await window.updateTodayAppointmentStatus(patientId, data.examDate, data.visitType);
+                    showToast('تم حفظ السجل ✓', 'success');
+                    window.updateTodayAppointmentStatus(patientId, data.examDate, data.visitType);
                 }
 
                 window.renderPatientDetailContent('tab-history');
@@ -7680,6 +7710,10 @@
             } catch (err) {
                 showToast('خطأ في الحفظ', 'error');
                 console.error(err);
+            } finally {
+                setTimeout(() => {
+                    window.isSavingExam = false;
+                }, 1500); // Prevent duplicate clicks for 1.5 seconds
             }
         };
 
@@ -7775,7 +7809,6 @@
             const files = event.target.files;
             if (!files || files.length === 0) return;
 
-            showToast('جاري قراءة المرفقات...', 'info');
             Array.from(files).forEach(file => {
                 if (file.size > 10 * 1024 * 1024) {
                     showToast(`حجم الملف ${file.name} كبير جداً (الحد الأقصى 10MB)`, 'error');
@@ -7825,8 +7858,8 @@
         window.deleteExamRecord = async function (key) {
             if (!confirm('هل أنت متأكد من حذف هذا السجل؟')) return;
             try {
-                await remove(ref(firebaseDb, 'examinations/' + key));
-                showToast('تم الحذف بنجاح', 'success');
+                remove(ref(firebaseDb, 'examinations/' + key));
+                showToast('تم الحذف بنجاح ✓', 'success');
                 window.renderPatientDetailContent('tab-history');
             } catch (e) {
                 console.error(e);
@@ -7837,8 +7870,6 @@
         window.addAttachmentToPatient = async function (patientId, event) {
             const files = event.target.files;
             if (!files || files.length === 0) return;
-
-            showToast('جاري رفع المرفقات...', 'info');
 
             const promises = Array.from(files).map(file => {
                 return new Promise((resolve) => {
@@ -8550,10 +8581,33 @@
             container.innerHTML = prescs.map(([pk, pr]) => {
                 const meds = pr.medications || [];
                 const linkedExam = window.allExaminations[pr.examId] || {};
-                const isFollowup = linkedExam.visitType && linkedExam.visitType.includes('متابعة');
+                const isFollowup = (linkedExam.visitType && linkedExam.visitType.includes('متابعة')) || pr.isFollowUp || (pr.visitType && pr.visitType.includes('متابعة'));
                 const themeColor = isFollowup ? '#f59e0b' : '#f43f5e';
                 const bgGlow = isFollowup ? 'rgba(245, 158, 11, 0.05)' : 'rgba(244, 63, 94, 0.05)';
                 const borderClass = isFollowup ? 'border-warning-glow' : 'border-danger-glow';
+
+                const hasMeds = meds.length > 0;
+                const hasText = !!pr.prescriptionText;
+                const badgeText = hasMeds ? `${meds.length} دواء` : 'روشتة نصية';
+
+                let prescBody = '';
+                if (hasMeds) {
+                    prescBody = `
+                        <div class="table-responsive rounded-4 border border-white-10">
+                            <table class="clinic-table m-0">
+                                <thead><tr><th>الدواء</th><th>الجرعة</th><th>التكرار</th><th>المدة</th></tr></thead>
+                                <tbody>
+                                    ${meds.map(m => `<tr><td><strong class="text-white">${m.name}</strong></td><td>${m.dose}</td><td>${m.frequency}</td><td>${m.duration}</td></tr>`).join('')}
+                                </tbody>
+                            </table>
+                        </div>`;
+                } else if (hasText) {
+                    const lines = pr.prescriptionText.split('\n').filter(l => l.trim());
+                    const formattedText = lines.map(l => `- ${l.replace(/^-+/, '').trim()}`).join('<br>');
+                    prescBody = `<div class="text-white p-3 rounded-3" style="font-family:var(--font-main); font-size:14px; line-height:1.8; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1); margin:0;">${formattedText}</div>`;
+                } else {
+                    prescBody = '<div class="text-white-50 small">روشتة فارغة</div>';
+                }
 
                 return `
                 <div class="exam-accordion mb-3 border ${borderClass} rounded-4 overflow-hidden" style="background:var(--surface-glass); backdrop-filter:blur(10px)">
@@ -8562,7 +8616,7 @@
                             <div class="rounded-circle d-flex align-items-center justify-content-center" style="width:36px; height:36px; background:${themeColor}22; color:${themeColor}">
                                 <i class="fas fa-prescription"></i>
                             </div>
-                            <div class="fw-bold text-white">${formatDateWithDay(pr.prescriptionDate || '')} <span class="badge ms-2 text-white" style="background:${themeColor}; font-size:10px">${meds.length} دواء</span></div>
+                            <div class="fw-bold text-white">${formatDateWithDay(pr.prescriptionDate || '')} <span class="badge ms-2 text-white" style="background:${themeColor}; font-size:10px">${badgeText}</span></div>
                         </div>
                         <div class="d-flex gap-2">
                             <button class="btn-sm-action btn-edit-sm" onclick="event.stopPropagation();window.editPrescription('${pk}')" title="تعديل"><i class="fas fa-edit"></i></button>
@@ -8572,14 +8626,7 @@
                         </div>
                     </div>
                     <div class="exam-accordion-body p-3">
-                        <div class="table-responsive rounded-4 border border-white-10">
-                            <table class="clinic-table m-0">
-                                <thead><tr><th>الدواء</th><th>الجرعة</th><th>التكرار</th><th>المدة</th></tr></thead>
-                                <tbody>
-                                    ${meds.map(m => `<tr><td><strong class="text-white">${m.name}</strong></td><td>${m.dose}</td><td>${m.frequency}</td><td>${m.duration}</td></tr>`).join('')}
-                                </tbody>
-                            </table>
-                        </div>
+                        ${prescBody}
                         ${pr.notes ? `<div class="mt-3 p-2 rounded-3 bg-white-5 fw-bold small text-white-50"><i class="fas fa-info-circle me-1"></i> ملاحظات: ${pr.notes}</div>` : ''}
                     </div>
                 </div>`;
@@ -8709,15 +8756,15 @@
         window.saveEditPatient = async function () {
             const key = document.getElementById('editPatientId').value;
             if (!key) return;
-            await update(ref(firebaseDb, 'patients/' + key), {
+            showToast('تم تحديث بيانات المريض ✓', 'success');
+            bootstrap.Modal.getInstance(document.getElementById('editPatientModal'))?.hide();
+            update(ref(firebaseDb, 'patients/' + key), {
                 name: document.getElementById('editPatientName').value.trim(),
                 age: document.getElementById('editPatientAge').value,
                 gender: document.getElementById('editPatientGender').value,
                 phone: document.getElementById('editPatientPhone').value,
                 address: document.getElementById('editPatientAddress').value
             });
-            showToast('تم التحديث ✓', 'success');
-            bootstrap.Modal.getInstance(document.getElementById('editPatientModal'))?.hide();
         };
         window.deletePatient = async function (key) {
             if (!key || !confirm('حذف المريض؟ سيتم حذف جميع المواعيد والكشوفات المرتبطة به.')) return;
@@ -8828,13 +8875,6 @@
             const key = document.getElementById('editApptKey').value;
             if (!key) return;
             try {
-                await update(ref(firebaseDb, 'appointments/' + key), {
-                    date: document.getElementById('editApptDate').value,
-                    time: document.getElementById('editApptTime').value,
-                    type: document.getElementById('editApptType').value,
-                    notes: document.getElementById('editApptNotes').value,
-                    isFollowUp: document.getElementById('editApptType').value.includes('متابعة')
-                });
                 showToast('تم تعديل الموعد ✓', 'success');
                 const modalEl = document.getElementById('editApptModal');
                 const inst = bootstrap.Modal.getInstance(modalEl);
@@ -8847,6 +8887,13 @@
                     const backdrop = document.querySelector('.modal-backdrop');
                     if (backdrop) backdrop.remove();
                 }
+                update(ref(firebaseDb, 'appointments/' + key), {
+                    date: document.getElementById('editApptDate').value,
+                    time: document.getElementById('editApptTime').value,
+                    type: document.getElementById('editApptType').value,
+                    notes: document.getElementById('editApptNotes').value,
+                    isFollowUp: document.getElementById('editApptType').value.includes('متابعة')
+                });
             } catch (err) {
                 console.error(err);
                 showToast('خطأ في الحفظ', 'error');
@@ -8865,18 +8912,16 @@
             let idx = statuses.indexOf(curr);
             if (idx === -1) idx = 0;
             const next = statuses[(idx + 1) % statuses.length];
-            await update(ref(firebaseDb, 'appointments/' + key), { status: next });
-            showToast('تم تحديث الحالة: ' + next, 'info');
+            showToast('الحالة: ' + next, 'info');
+            update(ref(firebaseDb, 'appointments/' + key), { status: next });
         };
         window.deleteAppt = async function (key) {
             if (!confirm('حذف الموعد؟')) return;
-            try {
-                await remove(ref(firebaseDb, 'appointments/' + key));
-                showToast('تم الحذف', 'success');
-            } catch (e) {
+            showToast('تم حذف الموعد ✓', 'success');
+            remove(ref(firebaseDb, 'appointments/' + key)).catch(e => {
                 console.error(e);
                 showToast('حدث خطأ أثناء الحذف', 'error');
-            }
+            });
         };
         window.deleteCompletedAppointments = async function () {
             const completedKeys = Object.entries(window.allAppointments || {})
@@ -8893,7 +8938,6 @@
             }
 
             try {
-                showToast('جاري حذف المواعيد المكتملة...', 'info');
                 for (const key of completedKeys) {
                     await remove(ref(firebaseDb, 'appointments/' + key));
                 }
@@ -9102,13 +9146,11 @@
 
         window.deletePrescription = async function (key) {
             if (!confirm('هل أنت متأكد من حذف هذه الروشتة؟')) return;
-            try {
-                await remove(ref(firebaseDb, 'prescriptions/' + key));
-                showToast('تم حذف الروشتة بنجاح', 'success');
-            } catch (e) {
+            showToast('تم حذف الروشتة ✓', 'success');
+            remove(ref(firebaseDb, 'prescriptions/' + key)).catch(e => {
                 console.error(e);
                 showToast('خطأ أثناء الحذف', 'error');
-            }
+            });
         };
 
         window.deleteAppointment = async function (key) {
@@ -9121,14 +9163,13 @@
 
         window.deleteExam = async function (key) {
             if (!confirm('حذف الكشف؟')) return;
-            try {
-                await remove(ref(firebaseDb, 'examinations/' + key));
-                showToast('تم الحذف', 'success');
+            showToast('تم الحذف ✓', 'success');
+            remove(ref(firebaseDb, 'examinations/' + key)).then(() => {
                 if (window.currentExamPatientId) renderExamHistory(window.currentExamPatientId);
-            } catch (e) {
+            }).catch(e => {
                 console.error(e);
                 showToast('حدث خطأ أثناء الحذف', 'error');
-            }
+            });
         };
 
         window.printExamFormatted = function () {
@@ -9378,12 +9419,12 @@
             };
 
             if (window._editPrescriptionKey) {
-                await update(ref(firebaseDb, 'prescriptions/' + window._editPrescriptionKey), payload);
                 showToast('تم تعديل الروشتة ✓', 'success');
+                update(ref(firebaseDb, 'prescriptions/' + window._editPrescriptionKey), payload);
                 delete window._editPrescriptionKey;
             } else {
-                await set(push(ref(firebaseDb, 'prescriptions')), payload);
                 showToast('تم حفظ الروشتة ✓', 'success');
+                set(push(ref(firebaseDb, 'prescriptions')), payload);
             }
 
             window.resetPrescriptionForm();
@@ -9399,10 +9440,12 @@
             tbody.innerHTML = prescs.length === 0 ?
                 '<tr><td colspan="5" class="text-center text-muted py-4">لا توجد روشتات</td></tr>' :
                 prescs.map(([key, p], i) => {
+                    const lines = (p.prescriptionText || '').split('\n').filter(l => l.trim());
+                    const summaryText = lines.map(l => `- ${l.replace(/^-+/, '').trim()}`).join('<br>');
                     const summary = p.prescriptionText
-                        ? p.prescriptionText.substring(0, 40) + (p.prescriptionText.length > 40 ? '...' : '')
+                        ? summaryText
                         : ((p.medications || []).length + ' أدوية');
-                    return `<tr><td>${i + 1}</td><td>${p.patientName}</td><td>${p.prescriptionDate}</td><td style="font-size:12px;max-width:200px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis">${summary}</td><td><div class="d-flex gap-1"><button class="btn-sm-action btn-view-sm" onclick="window.viewPrescription('${key}')"><i class="fas fa-eye"></i></button><button class="btn-sm-action btn-edit-sm" onclick="window.editPrescription('${key}')"><i class="fas fa-edit"></i></button><button class="btn-sm-action btn-print-teal" onclick="window.printSinglePrescription('${key}')"><i class="fas fa-print"></i></button><button class="btn-sm-action btn-delete-sm" onclick="window.deletePrescription('${key}')"><i class="fas fa-trash"></i></button></div></td></tr>`;
+                    return `<tr><td>${i + 1}</td><td>${p.patientName}</td><td>${p.prescriptionDate}</td><td style="font-size:12px;min-width:180px">${summary}</td><td><div class="d-flex gap-1"><button class="btn-sm-action btn-view-sm" onclick="window.viewPrescription('${key}')"><i class="fas fa-eye"></i></button><button class="btn-sm-action btn-edit-sm" onclick="window.editPrescription('${key}')"><i class="fas fa-edit"></i></button><button class="btn-sm-action btn-print-teal" onclick="window.printSinglePrescription('${key}')"><i class="fas fa-print"></i></button><button class="btn-sm-action btn-delete-sm" onclick="window.deletePrescription('${key}')"><i class="fas fa-trash"></i></button></div></td></tr>`;
                 }).join('');
         }
         window.viewPrescription = function (key) {
@@ -9410,7 +9453,9 @@
             if (!pr) return;
             let contentHtml = '';
             if (pr.prescriptionText) {
-                contentHtml = `<pre style="white-space:pre-wrap;font-family:Cairo,sans-serif;font-size:15px;line-height:2;background:rgba(0,0,0,0.03);padding:16px;border-radius:12px;border:1px solid #e2e8f0">${pr.prescriptionText}</pre>`;
+                const lines = pr.prescriptionText.split('\n').filter(l => l.trim());
+                const formattedText = lines.map(l => `- ${l.replace(/^-+/, '').trim()}`).join('<br>');
+                contentHtml = `<div style="font-family:Cairo,sans-serif;font-size:15px;line-height:2;background:rgba(0,0,0,0.03);padding:16px;border-radius:12px;border:1px solid #e2e8f0">${formattedText}</div>`;
             } else {
                 const meds = pr.medications || [];
                 contentHtml = `<table class="clinic-table"><thead><tr><th>الدواء</th><th>الجرعة</th><th>التكرار</th><th>المدة</th></tr></thead><tbody>${meds.map(m => `<tr><td>${m.name}</td><td>${m.dose}</td><td>${m.frequency}</td><td>${m.duration}</td></tr>`).join('')}</tbody></table>`;
@@ -9463,15 +9508,32 @@
 
         window.deletePrescription = async function (key) {
             if (!confirm('حذف الروشتة الطبية؟')) return;
+
+            const pr = window.allPrescriptions[key];
+            if (pr && pr.examId) {
+                try {
+                    await update(ref(firebaseDb, 'examinations/' + pr.examId), {
+                        prescriptionText: ''
+                    });
+                } catch (err) {
+                    console.error('Failed to clear prescriptionText in exam', err);
+                }
+            }
+
             await remove(ref(firebaseDb, 'prescriptions/' + key));
             showToast('تم الحذف', 'success');
+
             // Re-render standalone tab
             if (document.getElementById('page-prescriptions').classList.contains('active')) {
                 renderAllPrescriptions();
             }
-            // Re-render patient modal tab if open
-            if (window.currentExamPatientId && document.getElementById('patientModal').classList.contains('show')) {
-                renderPatientPrescriptionsTab(document.getElementById('prescriptionsTab'), window.currentExamPatientId);
+
+            // Re-render patient details tab if currently active
+            if (window.globalSelectedPatientKey) {
+                const tabBtn = document.querySelector('#patientDetailTabs button[data-tab="tab-prescriptions"]');
+                if (tabBtn && tabBtn.classList.contains('active')) {
+                    window.renderPatientDetailContent('tab-prescriptions');
+                }
             }
         };
         window.printSinglePrescription = function (key) {
@@ -9486,7 +9548,7 @@
             if (pr.prescriptionText) {
                 // نص حر - طباعة سطر بسطر
                 const lines = pr.prescriptionText.split('\n').filter(l => l.trim());
-                prescBody = `<div style="margin-top:20px">${lines.map((line, i) => `<div style="padding:10px 14px;margin-bottom:8px;border-right:4px solid #1e40af;background:#f8fafc;border-radius:6px;font-size:16px;font-weight:700">${line}</div>`).join('')}</div>`;
+                prescBody = `<div style="margin-top:20px">${lines.map((line, i) => `<div style="padding:10px 14px;margin-bottom:8px;border-right:4px solid #1e40af;background:#f8fafc;border-radius:6px;font-size:16px;font-weight:700">- ${line.replace(/^-+/, '').trim()}</div>`).join('')}</div>`;
             } else {
                 const meds = pr.medications || [];
                 prescBody = `<table style="width:100%;border-collapse:collapse;margin-top:16px"><thead><tr style="background:#1e40af;color:#fff"><th style="padding:8px;border:1px solid #ddd">الدواء</th><th style="padding:8px;border:1px solid #ddd">الجرعة</th><th style="padding:8px;border:1px solid #ddd">التكرار</th><th style="padding:8px;border:1px solid #ddd">المدة</th></tr></thead><tbody>${meds.map(m => `<tr><td style="padding:8px;border:1px solid #ddd">${m.name}</td><td style="padding:8px;border:1px solid #ddd">${m.dose}</td><td style="padding:8px;border:1px solid #ddd">${m.frequency}</td><td style="padding:8px;border:1px solid #ddd">${m.duration}</td></tr>`).join('')}</tbody></table>`;
@@ -9912,13 +9974,13 @@
         window.saveEditRevenue = async function () {
             const key = document.getElementById('editRevKey').value;
             if (!key) return;
-            await update(ref(firebaseDb, 'manualRevenues/' + key), {
+            showToast('تم تعديل الإيراد ✓', 'success');
+            bootstrap.Modal.getInstance(document.getElementById('editRevenueModal'))?.hide();
+            update(ref(firebaseDb, 'manualRevenues/' + key), {
                 description: document.getElementById('editRevDesc').value,
                 amount: parseInt(document.getElementById('editRevAmount').value) || 0,
                 date: document.getElementById('editRevDate').value
             });
-            showToast('تم تعديل الإيراد ✓', 'success');
-            bootstrap.Modal.getInstance(document.getElementById('editRevenueModal'))?.hide();
         };
         window.filterRevenuePeriod = function () {
             document.getElementById('revFilterDate').value = '';
@@ -9942,18 +10004,18 @@
             const date = document.getElementById('manualRevDate').value;
             if (!desc || !amount) return showToast('أدخل البيان والمبلغ', 'error');
             if (window._editManualKey) {
-                await update(ref(firebaseDb, 'manualRevenues/' + window._editManualKey), {
+                showToast('تم تعديل الإيراد ✓', 'success');
+                update(ref(firebaseDb, 'manualRevenues/' + window._editManualKey), {
                     description: desc, amount,
                     date, patientName: 'يدوي'
                 });
-                showToast('تم تعديل الإيراد ✓', 'success');
                 delete window._editManualKey;
             } else {
-                await set(push(ref(firebaseDb, 'manualRevenues')), {
+                showToast('تمت إضافة الإيراد ✓', 'success');
+                set(push(ref(firebaseDb, 'manualRevenues')), {
                     description: desc, amount, date,
                     patientName: 'يدوي', createdAt: Date.now()
                 });
-                showToast('تمت إضافة الإيراد ✓', 'success');
             }
             document.getElementById('manualRevDesc').value = '';
             document.getElementById('manualRevAmount').value = '';
@@ -9961,13 +10023,11 @@
         };
         window.deleteManualRevenue = async function (key) {
             if (!confirm('حذف الإيراد؟')) return;
-            try {
-                await remove(ref(firebaseDb, 'manualRevenues/' + key));
-                showToast('تم الحذف', 'success');
-            } catch (e) {
+            showToast('تم حذف الإيراد ✓', 'success');
+            remove(ref(firebaseDb, 'manualRevenues/' + key)).catch(e => {
                 console.error(e);
                 showToast('حدث خطأ أثناء الحذف', 'error');
-            }
+            });
         };
         window.editManualRevenue = function (key) {
             const m = window.allManualRevenues[key];
