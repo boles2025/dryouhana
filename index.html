@@ -5576,6 +5576,104 @@
             }, 50);
         }
         // ===================================================
+        window.showUpcomingFollowUpsModal = function () {
+            const today = getToday();
+            const appts = Object.entries(window.allAppointments)
+                .filter(([k, a]) => a.isFollowUp && a.date >= today && a.status === 'منتظر')
+                .map(([k, a]) => ({ ...a, key: k }))
+                .sort((a, b) => a.date.localeCompare(b.date) || a.time.localeCompare(b.time));
+
+            document.getElementById('todayListModalTitle').innerHTML = '<i class="fas fa-redo ms-2 text-warning" style="font-size:18px;"></i>متابعات قادمة';
+
+            if (appts.length === 0) {
+                document.getElementById('todayListModalBody').innerHTML = '<div class="text-white-50 text-center py-5">لا توجد متابعات قادمة</div>';
+                showModal('todayListModal');
+                return;
+            }
+
+            // Group by date
+            const groups = {};
+            appts.forEach(a => {
+                if (!groups[a.date]) groups[a.date] = [];
+                groups[a.date].push(a);
+            });
+
+            const sortedDates = Object.keys(groups).sort();
+
+            const html = sortedDates.map(dateStr => {
+                const dateAppts = groups[dateStr];
+                const dayName = getArabicDay(dateStr);
+                
+                const rowsHtml = dateAppts.map(a => `
+                    <div class="d-flex align-items-center justify-content-between p-3" style="border-bottom: 1px solid rgba(255,255,255,0.05);">
+                        <div class="d-flex align-items-center gap-3">
+                            <div class="rounded-circle d-flex align-items-center justify-content-center" style="width:36px; height:36px; background: rgba(245, 158, 11, 0.1); color: #f59e0b;">
+                                <i class="fas fa-user" style="font-size:14px;"></i>
+                            </div>
+                            <div>
+                                <strong class="text-white d-block" style="font-size: 13.5px;">${a.patientName}</strong>
+                                <span class="text-white-50" style="font-size: 11px;"><i class="far fa-clock me-1"></i> ${a.time} | ${a.type}</span>
+                            </div>
+                        </div>
+                        <div>
+                            <button class="btn btn-sm btn-outline-warning" onclick="window.viewPatientFromDay('${a.patientId || ''}', '${a.key}')" title="فتح الملف / تسجيل" style="padding: 4px 10px; font-size: 11px; border-radius: 6px;">
+                                <i class="fas ${a.patientId ? 'fa-folder-open' : 'fa-user-plus'} me-1"></i> فتح الملف
+                            </button>
+                        </div>
+                    </div>
+                `).join('');
+
+                return `
+                    <div class="followup-group mb-2 border rounded-4 overflow-hidden" style="background: rgba(255,255,255,0.02); border-color: rgba(255,255,255,0.08) !important;">
+                        <div class="followup-header d-flex justify-content-between align-items-center p-3" style="cursor:pointer; background: rgba(255,255,255,0.03); transition: background 0.3s;" onclick="window.toggleFollowUpGroup(this)">
+                            <div class="d-flex align-items-center gap-2">
+                                <i class="fas fa-chevron-left toggle-arrow text-white-50" style="transition: transform 0.3s; font-size: 12px; margin-left: 6px;"></i>
+                                <span class="fw-bold text-white" style="font-size:14px;">${dayName} ${dateStr}</span>
+                            </div>
+                            <span class="badge bg-warning text-dark px-2.5 py-1.5 rounded-pill fw-bold" style="font-size: 11px;">${dateAppts.length} ${dateAppts.length === 1 ? 'متابعة' : 'متابعات'}</span>
+                        </div>
+                        <div class="followup-body" style="max-height: 0; overflow: hidden; transition: max-height 0.3s ease-out; background: rgba(0,0,0,0.15);">
+                            ${rowsHtml}
+                        </div>
+                    </div>
+                `;
+            }).join('');
+
+            document.getElementById('todayListModalBody').innerHTML = `
+                <div class="followups-accordion-container" style="max-height:65vh; overflow-y:auto; padding-right:4px;">
+                    ${html}
+                </div>
+            `;
+
+            // Define the toggle helper window function if not already defined
+            if (!window.toggleFollowUpGroup) {
+                window.toggleFollowUpGroup = function (header) {
+                    const group = header.parentElement;
+                    const body = group.querySelector('.followup-body');
+                    const arrow = header.querySelector('.toggle-arrow');
+                    const isOpen = group.classList.contains('open');
+
+                    if (isOpen) {
+                        group.classList.remove('open');
+                        body.style.maxHeight = '0';
+                        arrow.style.transform = 'rotate(0deg)';
+                    } else {
+                        // Close other open groups first to make it a clean accordion
+                        document.querySelectorAll('.followup-group.open').forEach(g => {
+                            g.classList.remove('open');
+                            g.querySelector('.followup-body').style.maxHeight = '0';
+                            g.querySelector('.toggle-arrow').style.transform = 'rotate(0deg)';
+                        });
+
+                        group.classList.add('open');
+                        body.style.maxHeight = body.scrollHeight + 'px';
+                        arrow.style.transform = 'rotate(-90deg)'; // rotate left arrow to point down in RTL
+                    }
+                };
+            }
+
+            showModal('todayListModal');
+        };
         window.currentExamPatientId = null;
         window.currentExamPatientData = null;
         window.globalSelectedPatientKey = null;
@@ -5651,16 +5749,7 @@
             showModal('todayListModal');
         };
 
-        window.showUpcomingFollowUpsModal = function () {
-            const today = getToday();
-            const appts = Object.values(window.allAppointments).filter(a => a.isFollowUp && a.date >= today && a.status === 'منتظر')
-                .sort((a, b) => a.date > b.date ? 1 : -1);
-            document.getElementById('todayListModalTitle').innerHTML = '<i class="fas fa-redo ms-2"></i>متابعات قادمة';
-            document.getElementById('todayListModalBody').innerHTML = appts.length === 0 ?
-                '<div class="text-muted text-center py-5">لا توجد متابعات قادمة</div>' :
-                `<table class="clinic-table"><thead><tr><th>المريض</th><th>التاريخ</th><th>النوع</th></tr></thead><tbody>${appts.map(a => `<tr><td><strong>${a.patientName}</strong></td><td>${a.date}</td><td>${a.type}</td></tr>`).join('')}</tbody></table>`;
-            showModal('todayListModal');
-        };
+
 
         function renderBigCalendar() {
             const grid = document.getElementById('mainCalendarGrid');
