@@ -7749,6 +7749,76 @@
             }
         };
 
+        window.revertAppointmentStatusOnExamDelete = async function (examData) {
+            if (!examData || !examData.patientId || !examData.examDate) return;
+            const patientId = examData.patientId;
+            const examDateStr = examData.examDate;
+            const isFollowUp = examData.visitType && (examData.visitType.includes('متابعة') || examData.visitType.includes('إعادة'));
+            const targetCompletedStatus = isFollowUp ? 'تم الإعادة' : 'تم الكشف';
+
+            // دالة توحيد الحروف لمقارنة الأسماء بدقة
+            const normalizeName = (name) => {
+                if (!name) return '';
+                return name.trim()
+                    .replace(/[\s]+/g, ' ')
+                    .replace(/[أإآا]/g, 'ا')
+                    .replace(/ى/g, 'ي')
+                    .replace(/ه/g, 'ة');
+            };
+
+            const patient = window.allPatients[patientId];
+            const patientName = patient ? patient.name : '';
+            const normTargetName = normalizeName(patientName);
+
+            // ابحث عن المواعيد المكتملة التي تطابق المريض وحالتها هي الحالة المستهدفة
+            const completedAppts = Object.entries(window.allAppointments || {}).filter(([ak, appt]) => {
+                const isMatchingStatus = appt.status === targetCompletedStatus;
+                if (!isMatchingStatus) return false;
+
+                const sameId = appt.patientId && appt.patientId === patientId;
+                const sameName = normTargetName && normalizeName(appt.patientName) === normTargetName;
+                return sameId || sameName;
+            });
+
+            if (completedAppts.length > 0) {
+                // ترتيبها حسب الأقرب لتاريخ هذا الفحص المحذوف
+                completedAppts.sort((a, b) => {
+                    const diffA = Math.abs(new Date(a[1].date) - new Date(examDateStr));
+                    const diffB = Math.abs(new Date(b[1].date) - new Date(examDateStr));
+                    return diffA - diffB;
+                });
+
+                // الموعد الأقرب
+                const [closestKey, closestAppt] = completedAppts[0];
+                const apptDate = new Date(closestAppt.date);
+                const examDate = new Date(examDateStr);
+                apptDate.setHours(0,0,0,0);
+                examDate.setHours(0,0,0,0);
+                const diffTime = Math.abs(apptDate - examDate);
+                const diffDays = diffTime / (1000 * 60 * 60 * 24);
+
+                if (isFollowUp || diffDays <= 3) {
+                    await update(ref(firebaseDb, 'appointments/' + closestKey), { status: 'منتظر' });
+                    console.log(`[Revert] Reverted appointment ${closestKey} status to منتظر due to exam deletion`);
+                }
+            }
+        };
+
+        window.deleteExamRecord = async function (key) {
+            if (!confirm('هل أنت متأكد من حذف هذا السجل؟')) return;
+            try {
+                const examData = window.allExaminations[key];
+                if (examData) {
+                    await window.revertAppointmentStatusOnExamDelete(examData);
+                }
+                await remove(ref(firebaseDb, 'examinations/' + key));
+                showToast('تم الحذف بنجاح ✓', 'success');
+                window.renderPatientDetailContent('tab-history');
+            } catch (e) {
+                console.error(e);
+                showToast('خطأ في الحذف', 'error');
+            }
+        };
 
         window.editExam = function (key) {
             const ex = window.allExaminations[key];
@@ -7887,17 +7957,7 @@
             window.renderTabExamAttachmentsList();
         };
 
-        window.deleteExamRecord = async function (key) {
-            if (!confirm('هل أنت متأكد من حذف هذا السجل؟')) return;
-            try {
-                remove(ref(firebaseDb, 'examinations/' + key));
-                showToast('تم الحذف بنجاح ✓', 'success');
-                window.renderPatientDetailContent('tab-history');
-            } catch (e) {
-                console.error(e);
-                showToast('خطأ في الحذف', 'error');
-            }
-        };
+
 
         window.addAttachmentToPatient = async function (patientId, event) {
             const files = event.target.files;
