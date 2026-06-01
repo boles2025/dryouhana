@@ -4262,10 +4262,6 @@
                 style="background: linear-gradient(135deg, #0ea5e9, #0284c7); margin-top: 12px; border: none; box-shadow: 0 4px 15px rgba(14, 165, 233, 0.3);">
                 <i class="fas fa-bolt"></i> دخول سريع (yoyo)
             </button>
-            <button class="login-btn" onclick="document.getElementById('importBackupInput').click()"
-                style="background: linear-gradient(135deg, #10b981, #059669); margin-top: 12px; border: none; box-shadow: 0 4px 15px rgba(16, 185, 129, 0.3);">
-                <i class="fas fa-file-import"></i> استرداد بيانات (للأجهزة الجديدة)
-            </button>
             <div id="loginError" class="login-error">بيانات الدخول غير صحيحة</div>
         </div>
     </div>
@@ -4305,9 +4301,6 @@
                 <span class="current-page-title" id="pageTitle">لوحة التحكم</span>
             </div>
             <div class="topbar-right-group">
-                <div id="syncStatusBadge" class="time-pill me-2" style="background: rgba(239, 68, 68, 0.1); color: #ef4444; font-size: 12px; padding: 4px 10px; cursor: pointer; border: 1px solid rgba(239, 68, 68, 0.2);" onclick="alert('يتم مزامنة البيانات تلقائياً بين الجهاز الحالي والسحابة.')">
-                    <i class="fas fa-cloud-upload-alt"></i> غير متصل
-                </div>
                 <img id="topbarLogo" class="clinic-logo-top" src="" style="display:none"
                     onerror="this.style.display='none'">
                 <div class="time-pill"><i class="fas fa-calendar"></i> <span id="currentDate"></span></div>
@@ -5556,290 +5549,6 @@
         const firebaseApp = initializeApp(firebaseConfig);
         const firebaseDb = getDatabase(firebaseApp);
 
-        // ═══════════════════════════════════════════════════════════
-        // ██  OFFLINE-FIRST ENGINE — LocalDB + SyncEngine  ██
-        // ═══════════════════════════════════════════════════════════
-        class LocalDB {
-            constructor(name = 'YOYOClinicDB', version = 1) {
-                this.name = name; this.version = version;
-                this._db = null;
-                this._ready = this._open();
-            }
-            _open() {
-                return new Promise((resolve) => {
-                    const req = indexedDB.open(this.name, this.version);
-                    req.onupgradeneeded = ev => {
-                        const db = ev.target.result;
-                        ['patients','appointments','examinations','prescriptions',
-                         'manualRevenues','attachments','users','syncQueue'].forEach(t => {
-                            if (!db.objectStoreNames.contains(t))
-                                db.createObjectStore(t, { keyPath: '_id' });
-                        });
-                    };
-                    req.onsuccess = ev => { this._db = ev.target.result; resolve(); };
-                    req.onerror = () => resolve(); // graceful fallback
-                });
-            }
-            async getAll(table) {
-                await this._ready;
-                if (!this._db) return {};
-                return new Promise(resolve => {
-                    try {
-                        const tx = this._db.transaction(table, 'readonly');
-                        const req = tx.objectStore(table).getAll();
-                        req.onsuccess = () => {
-                            const out = {};
-                            (req.result||[]).forEach(({ _id, ...rest }) => out[_id] = rest);
-                            resolve(out);
-                        };
-                        req.onerror = () => resolve({});
-                    } catch(e) { resolve({}); }
-                });
-            }
-            async put(table, key, data) {
-                await this._ready;
-                if (!this._db) return;
-                return new Promise(resolve => {
-                    try {
-                        const tx = this._db.transaction(table, 'readwrite');
-                        tx.objectStore(table).put({ _id: key, ...data });
-                        tx.oncomplete = resolve; tx.onerror = resolve;
-                    } catch(e) { resolve(); }
-                });
-            }
-            async del(table, key) {
-                await this._ready;
-                if (!this._db) return;
-                return new Promise(resolve => {
-                    try {
-                        const tx = this._db.transaction(table, 'readwrite');
-                        tx.objectStore(table).delete(key);
-                        tx.oncomplete = resolve; tx.onerror = resolve;
-                    } catch(e) { resolve(); }
-                });
-            }
-            async putAll(table, obj) {
-                await this._ready;
-                if (!this._db) return;
-                return new Promise(resolve => {
-                    try {
-                        const tx = this._db.transaction(table, 'readwrite');
-                        const store = tx.objectStore(table);
-                        Object.entries(obj||{}).forEach(([k,v]) => store.put({ _id: k, ...v }));
-                        tx.oncomplete = resolve; tx.onerror = resolve;
-                    } catch(e) { resolve(); }
-                });
-            }
-            async exportAll() {
-                const tables = ['patients','appointments','examinations','prescriptions','manualRevenues','attachments','users'];
-                const out = {};
-                for (const t of tables) out[t] = await this.getAll(t);
-                return out;
-            }
-            async importAll(data) {
-                const tables = ['patients','appointments','examinations','prescriptions','manualRevenues','attachments','users'];
-                for (const t of tables) {
-                    if (data[t] && Object.keys(data[t]).length > 0) await this.putAll(t, data[t]);
-                }
-            }
-            async enqueue(op) {
-                const key = 'q_' + Date.now() + '_' + Math.random().toString(36).slice(2,8);
-                await this.put('syncQueue', key, { ...op, _ts: Date.now() });
-                return key;
-            }
-            async dequeue(key) { await this.del('syncQueue', key); }
-            async getQueue() {
-                const all = await this.getAll('syncQueue');
-                return Object.entries(all).map(([k,v])=>({...v,_qkey:k})).sort((a,b)=>a._ts-b._ts);
-            }
-        }
-        window._ldb = new LocalDB();
-
-        // ─── Sync Engine ───
-        window._syncBusy = false;
-        window._isOnline = navigator.onLine;
-
-        function _tblWinKey(table) {
-            const m = { patients:'allPatients', appointments:'allAppointments',
-                        examinations:'allExaminations', prescriptions:'allPrescriptions',
-                        manualRevenues:'allManualRevenues', attachments:'allAttachments', users:'allUsers' };
-            return m[table] || ('all' + table.charAt(0).toUpperCase() + table.slice(1));
-        }
-
-        function _updateConnUI(status) {
-            const el = document.getElementById('syncStatusBadge');
-            if (!el) return;
-            if (status === 'online') {
-                el.innerHTML = '<i class="fas fa-check-circle"></i> متصل ومزامن';
-                el.style.background = 'rgba(16, 185, 129, 0.1)';
-                el.style.color = '#10b981';
-                el.style.borderColor = 'rgba(16, 185, 129, 0.2)';
-            } else if (status === 'offline') {
-                el.innerHTML = '<i class="fas fa-exclamation-triangle"></i> غير متصل';
-                el.style.background = 'rgba(239, 68, 68, 0.1)';
-                el.style.color = '#ef4444';
-                el.style.borderColor = 'rgba(239, 68, 68, 0.2)';
-            } else if (status === 'syncing') {
-                el.innerHTML = '<i class="fas fa-sync fa-spin"></i> جاري المزامنة...';
-                el.style.background = 'rgba(245, 158, 11, 0.1)';
-                el.style.color = '#f59e0b';
-                el.style.borderColor = 'rgba(245, 158, 11, 0.2)';
-            }
-        }
-
-        async function _flushQueue() {
-            if (window._syncBusy || !window._isOnline) return;
-            const queue = await window._ldb.getQueue();
-            if (!queue.length) return;
-            window._syncBusy = true;
-            _updateConnUI('syncing');
-            for (const op of queue) {
-                try {
-                    if (op.op === 'set')    await set(ref(firebaseDb, op.path), op.data);
-                    else if (op.op === 'update') await update(ref(firebaseDb, op.path), op.data);
-                    else if (op.op === 'remove') await remove(ref(firebaseDb, op.path));
-                    else if (op.op === 'push') {
-                        const fbRef = push(ref(firebaseDb, op.table));
-                        await set(fbRef, op.data);
-                        if (op.tempKey && op.tempKey !== fbRef.key) {
-                            const wk = _tblWinKey(op.table);
-                            const d = (await window._ldb.getAll(op.table))[op.tempKey];
-                            if (d) {
-                                await window._ldb.put(op.table, fbRef.key, d);
-                                await window._ldb.del(op.table, op.tempKey);
-                                if (window[wk]) { window[wk][fbRef.key] = window[wk][op.tempKey]||d; delete window[wk][op.tempKey]; }
-                            }
-                        }
-                    }
-                    await window._ldb.dequeue(op._qkey);
-                } catch(e) { console.warn('Sync op failed:', op.op, e); }
-            }
-            window._syncBusy = false;
-            _updateConnUI('online');
-        }
-
-        onValue(ref(firebaseDb, '.info/connected'), (snap) => {
-            if (snap.val() === true) {
-                window._isOnline = true;
-                _updateConnUI('online');
-                setTimeout(_flushQueue, 1500); // Add a small delay before pushing
-            } else {
-                window._isOnline = false;
-                _updateConnUI('offline');
-            }
-        });
-
-        // ─── Smart Write Helpers ───
-        window.smartPush = async function(table, data) {
-            const tempKey = 'L_' + Date.now() + '_' + Math.random().toString(36).slice(2,7);
-            await window._ldb.put(table, tempKey, data);
-            const wk = _tblWinKey(table);
-            if (!window[wk]) window[wk] = {};
-            window[wk][tempKey] = data;
-            if (window._isOnline) {
-                try {
-                    const fbRef = push(ref(firebaseDb, table));
-                    await set(fbRef, data);
-                    if (fbRef.key !== tempKey) {
-                        await window._ldb.put(table, fbRef.key, data);
-                        await window._ldb.del(table, tempKey);
-                        window[wk][fbRef.key] = data; delete window[wk][tempKey];
-                    }
-                    return { key: fbRef.key };
-                } catch(e) {
-                    await window._ldb.enqueue({ op:'push', table, tempKey, data });
-                    return { key: tempKey };
-                }
-            } else {
-                await window._ldb.enqueue({ op:'push', table, tempKey, data });
-                return { key: tempKey };
-            }
-        };
-
-        window.smartUpdate = async function(path, data) {
-            const parts = path.split('/'), table = parts[0], key = parts.slice(1).join('/');
-            if (table && key) {
-                const existing = (await window._ldb.getAll(table))[key] || {};
-                await window._ldb.put(table, key, { ...existing, ...data });
-                const wk = _tblWinKey(table);
-                if (window[wk] && window[wk][key]) Object.assign(window[wk][key], data);
-                else if (window[wk]) window[wk][key] = { ...existing, ...data };
-            }
-            if (window._isOnline) {
-                try { await update(ref(firebaseDb, path), data); }
-                catch(e) { await window._ldb.enqueue({ op:'update', path, data }); }
-            } else { await window._ldb.enqueue({ op:'update', path, data }); }
-        };
-
-        window.smartSet = async function(path, data) {
-            const parts = path.split('/'), table = parts[0], key = parts.slice(1).join('/');
-            if (table && key) {
-                await window._ldb.put(table, key, data);
-                const wk = _tblWinKey(table);
-                if (window[wk]) window[wk][key] = data;
-            }
-            if (window._isOnline) {
-                try { await set(ref(firebaseDb, path), data); }
-                catch(e) { await window._ldb.enqueue({ op:'set', path, data }); }
-            } else { await window._ldb.enqueue({ op:'set', path, data }); }
-        };
-
-        window.smartRemove = async function(path) {
-            const parts = path.split('/'), table = parts[0], key = parts.slice(1).join('/');
-            if (table && key) {
-                await window._ldb.del(table, key);
-                const wk = _tblWinKey(table);
-                if (window[wk]) delete window[wk][key];
-            }
-            if (window._isOnline) {
-                try { await remove(ref(firebaseDb, path)); }
-                catch(e) { await window._ldb.enqueue({ op:'remove', path }); }
-            } else { await window._ldb.enqueue({ op:'remove', path }); }
-        };
-
-        window.smartGet = async function(path) {
-            if (window._isOnline) {
-                try { return await get(ref(firebaseDb, path)); } catch(e) { /* fallthrough */ }
-            }
-            const table = path.split('/')[0];
-            const local = await window._ldb.getAll(table);
-            return { exists: () => Object.keys(local).length > 0, val: () => Object.keys(local).length > 0 ? local : null };
-        };
-
-        // Export local IndexedDB data (for moving between devices)
-        window.exportLocalData = async function() {
-            const data = await window._ldb.exportAll();
-            const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-            const a = document.createElement('a');
-            a.href = URL.createObjectURL(blob); a.download = 'clinic_data_' + new Date().toLocaleDateString('en-CA') + '.json';
-            document.body.appendChild(a); a.click(); a.remove();
-            showToast('تم تصدير البيانات المحلية بنجاح ✓', 'success');
-        };
-
-        // Import local data (for loading on a new device)
-        window.importLocalData = async function(input) {
-            const file = input.files ? input.files[0] : input;
-            if (!file) return;
-            const text = await file.text();
-            try {
-                const data = JSON.parse(text);
-                if (!confirm('سيتم استبدال البيانات المحلية بالبيانات المستوردة. هل أنت متأكد؟')) return;
-                await window._ldb.importAll(data);
-                if (data.patients) window.allPatients = data.patients;
-                if (data.appointments) window.allAppointments = data.appointments;
-                if (data.examinations) window.allExaminations = data.examinations;
-                if (data.prescriptions) window.allPrescriptions = data.prescriptions;
-                if (data.manualRevenues) window.allManualRevenues = data.manualRevenues;
-                if (data.attachments) window.allAttachments = data.attachments;
-                if (data.users) window.allUsers = data.users;
-                showToast('تم استيراد البيانات! جاري تحديث الصفحة...', 'success');
-                setTimeout(() => location.reload(), 2000);
-            } catch(e) { console.error(e); showToast('خطأ في استيراد الملف!', 'error'); }
-        };
-        // ═══════════════════════════════════════════════════════════
-        // ██  END OFFLINE-FIRST ENGINE  ██
-        // ═══════════════════════════════════════════════════════════
-
         // ===== SPEED OPTIMIZATION: Instant Cache Load =====
         function loadFromCache(key) {
             try { const data = localStorage.getItem('c_' + key); return data ? JSON.parse(data) : {}; }
@@ -6274,10 +5983,8 @@
             }
 
             try {
-                const snap = await window.smartGet('users');
-                const usersRaw = snap.val() || {};
-                // smartGet may return all IDB records directly (flat), normalize
-                const users = usersRaw;
+                const snap = await get(ref(firebaseDb, 'users'));
+                const users = snap.val() || {};
                 const found = Object.entries(users).find(([k, u]) => u.email === email && u.password === password);
                 if (found) {
                     window.currentUser = { key: found[0], ...found[1] };
@@ -6299,15 +6006,15 @@
 
         async function ensureAdminUser() {
             try {
-                const snap = await window.smartGet('users');
+                const snap = await get(ref(firebaseDb, 'users'));
                 const users = snap.val() || {};
                 const yoyoExists = Object.values(users).some(u => u.email === 'yoyo');
                 if (!yoyoExists) {
-                    await window.smartPush('users', {
+                    await set(push(ref(firebaseDb, 'users')), {
                         email: 'yoyo', password: '8520',
                         permissions: { all: true }
                     });
-                    console.log('User yoyo created');
+                    console.log('User yoyo created in Firebase');
                 }
             } catch (e) { console.error('ensureAdminUser error:', e); }
         }
@@ -6512,7 +6219,7 @@
                 };
 
                 try {
-                    await window.smartPush('attachments', newAtt);
+                    await set(push(ref(firebaseDb, 'attachments')), newAtt);
                     showToast('تم إضافة المرفق بنجاح', 'success');
                     window.renderPatientDetailContent('tab-attachments');
                 } catch (err) {
@@ -6523,25 +6230,15 @@
             reader.readAsDataURL(file);
         };
 
-        async function loadAllData() {
-            // ── Step 1: Load from IndexedDB (local, fast, offline-capable) ──
+        function loadAllData() {
             try {
-                const idbPatients = await window._ldb.getAll('patients');
-                const idbAppts    = await window._ldb.getAll('appointments');
-                const idbExams    = await window._ldb.getAll('examinations');
-                const idbPrx      = await window._ldb.getAll('prescriptions');
-                const idbRevs     = await window._ldb.getAll('manualRevenues');
-                const idbAtts     = await window._ldb.getAll('attachments');
-                const idbUsers    = await window._ldb.getAll('users');
-
-                // Use IndexedDB if it has data (richer than localStorage)
-                if (Object.keys(idbPatients).length > 0) window.allPatients = idbPatients;
-                if (Object.keys(idbAppts).length > 0) window.allAppointments = idbAppts;
-                if (Object.keys(idbExams).length > 0) window.allExaminations = idbExams;
-                if (Object.keys(idbPrx).length > 0) window.allPrescriptions = idbPrx;
-                if (Object.keys(idbRevs).length > 0) window.allManualRevenues = idbRevs;
-                if (Object.keys(idbAtts).length > 0) window.allAttachments = idbAtts;
-                if (Object.keys(idbUsers).length > 0) window.allUsers = idbUsers;
+                window.allPatients = JSON.parse(localStorage.getItem('c_patients')) || {};
+                window.allAppointments = JSON.parse(localStorage.getItem('c_appointments')) || {};
+                window.allExaminations = JSON.parse(localStorage.getItem('c_examinations')) || {};
+                window.allPrescriptions = JSON.parse(localStorage.getItem('c_prescriptions')) || {};
+                window.allManualRevenues = JSON.parse(localStorage.getItem('c_revenues')) || {};
+                window.allAttachments = JSON.parse(localStorage.getItem('c_attachments')) || {};
+                window.allUsers = JSON.parse(localStorage.getItem('c_users')) || {};
 
                 if (Object.keys(window.allPatients).length > 0) {
                     updatePatientCounter();
@@ -6551,29 +6248,18 @@
                     updateRevenuePage();
                     renderUsersList();
                 }
-            } catch (e) { console.warn('IndexedDB load error:', e); }
-
-            // ── Step 2: Firebase listeners — MERGE with local (don't replace) ──
-            // Merging ensures local-only records survive Firebase deletions
-            function _mergeAndSave(table, winKey, lsKey, fbData) {
-                const local = window[winKey] || {};
-                // Local keys that came ONLY from offline queue preserve their data
-                // Firebase data wins for any key that exists in both
-                const merged = { ...local, ...fbData };
-                window[winKey] = merged;
-                try { localStorage.setItem(lsKey, JSON.stringify(merged)); } catch(e) {}
-                window._ldb.putAll(table, merged).catch(()=>{});
-                return merged;
-            }
+            } catch (e) { console.warn('Cache load error:', e); }
 
             onValue(ref(firebaseDb, 'patients'), snap => {
-                _mergeAndSave('patients', 'allPatients', 'c_patients', snap.val() || {});
+                window.allPatients = snap.val() || {};
+                localStorage.setItem('c_patients', JSON.stringify(window.allPatients));
                 updatePatientCounter();
                 updateDashboard();
             });
             let oneTimeApptsRepaired = false;
             onValue(ref(firebaseDb, 'appointments'), snap => {
-                _mergeAndSave('appointments', 'allAppointments', 'c_appointments', snap.val() || {});
+                window.allAppointments = snap.val() || {};
+                localStorage.setItem('c_appointments', JSON.stringify(window.allAppointments));
                 renderAppointmentsTable();
                 updateDashboard();
                 
@@ -6582,7 +6268,7 @@
                     oneTimeApptsRepaired = true;
                     Object.entries(window.allAppointments).forEach(async ([key, appt]) => {
                         const name = appt.patientName || '';
-                        const cleanName = name.replace(/ى/g, 'ي').replace(/ه/g, 'ة');
+                        const cleanName = name.replace(/ى/g, 'ي').replace(/ه/g, 'ة'); // توحيد الحروف لمطابقة فائقة الدقة
                         
                         if (cleanName.includes('شيرين رمسيس') || 
                             cleanName.includes('هبة عبد النور') || 
@@ -6681,7 +6367,7 @@
                 if (!appt.patientId && appt.phone) {
                     const matchedPatientKey = Object.keys(window.allPatients).find(k => window.allPatients[k].phone === appt.phone);
                     if (matchedPatientKey) {
-                        await window.smartUpdate('appointments/' + key, {
+                        await update(ref(firebaseDb, 'appointments/' + key), {
                             patientId: matchedPatientKey,
                             patientName: window.allPatients[matchedPatientKey].name
                         });
@@ -6717,7 +6403,7 @@
                 // فقط لو وُجد فحص حقيقي، غيّر الحالة
                 if (matchingExam) {
                     const targetStatus = (matchingExam.visitType && (matchingExam.visitType.includes('متابعة') || matchingExam.visitType.includes('إعادة'))) ? 'تم الإعادة' : 'تم الكشف';
-                    await window.smartUpdate('appointments/' + key, { status: targetStatus });
+                    await update(ref(firebaseDb, 'appointments/' + key), { status: targetStatus });
                 }
                 // إذا لم يوجد فحص بتاريخ مناسب → الموعد يبقى كما هو
             });
@@ -6751,7 +6437,7 @@
 
                 if (!hasRealExam) {
                     // لا يوجد فحص بعد تاريخ الموعد → الوسم كان خاطئاً → أعد الحالة إلى منتظر
-                    await window.smartUpdate('appointments/' + key, { status: 'منتظر' });
+                    await update(ref(firebaseDb, 'appointments/' + key), { status: 'منتظر' });
                     fixedCount++;
                 }
             }
@@ -6776,7 +6462,6 @@
                     .replace(/ى/g, 'ي')
                     .replace(/ه/g, 'ة');
             };
-
 
             const patient = window.allPatients[patientId];
             const patientName = patient ? patient.name : '';
@@ -6811,7 +6496,7 @@
 
                 if (isFollowUp || diffDays <= 3) {
                     // تحديث الحالة وتحديث معرف المريض أيضاً إذا كان مفقوداً لربطه بشكل دائم
-                    await window.smartUpdate('appointments/' + closestKey, { 
+                    await update(ref(firebaseDb, 'appointments/' + closestKey), { 
                         status: targetStatus,
                         patientId: patientId 
                     });
@@ -6827,10 +6512,8 @@
         }
 
         async function loadSettings() {
-            // Try localStorage first for instant load
-            try { const cached = localStorage.getItem('c_settings'); if (cached) { const s = JSON.parse(cached); if (s && Object.keys(s).length > 0) { window.clinicSettings = { ...window.clinicSettings, ...s }; } } } catch(e) {}
             try {
-                const snap = await window.smartGet('settings');
+                const snap = await get(ref(firebaseDb, 'settings'));
                 if (snap.exists()) {
                     window.clinicSettings = { ...window.clinicSettings, ...snap.val() };
                     window.customPatientFields = window.clinicSettings.customPatientFields || [];
@@ -6884,12 +6567,9 @@
             };
 
             try {
+                await update(ref(firebaseDb, 'settings'), updates);
+                // Update local memory too
                 Object.assign(window.clinicSettings, updates);
-                try { localStorage.setItem('c_settings', JSON.stringify(window.clinicSettings)); } catch(e) {}
-                if (window._isOnline) {
-                    try { await update(ref(firebaseDb, 'settings'), updates); }
-                    catch(e) { await window._ldb.enqueue({ op:'update', path:'settings', data: updates }); }
-                } else { await window._ldb.enqueue({ op:'update', path:'settings', data: updates }); }
                 showToast('تم حفظ الإعدادات ✓', 'success');
             } catch (e) {
                 console.error(e);
@@ -6897,25 +6577,24 @@
             }
         };
 
-        window.exportBackupJSON = async function () {
-            showToast('جاري تحضير ملف النسخة الاحتياطية...', 'info');
-            try {
-                const data = await window._ldb.exportAll();
-                data.settings = window.clinicSettings || {};
-                data.pricing = window.pricingTable || {};
-
-                const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(data));
-                const downloadAnchorNode = document.createElement('a');
-                downloadAnchorNode.setAttribute("href", dataStr);
-                downloadAnchorNode.setAttribute("download", "clinic_offline_backup_" + new Date().toLocaleDateString('en-CA') + ".json");
-                document.body.appendChild(downloadAnchorNode);
-                downloadAnchorNode.click();
-                downloadAnchorNode.remove();
-                showToast('تم تصدير النسخة بنجاح ✓', 'success');
-            } catch (e) {
-                console.error(e);
-                showToast('خطأ أثناء تجهيز النسخة', 'error');
-            }
+        window.exportBackupJSON = function () {
+            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify({
+                patients: window.allPatients,
+                examinations: window.allExaminations,
+                prescriptions: window.allPrescriptions,
+                appointments: window.allAppointments,
+                manualRevenues: window.allManualRevenues,
+                settings: window.clinicSettings,
+                pricing: window.pricingTable,
+                users: window.usersList
+            }));
+            const downloadAnchorNode = document.createElement('a');
+            downloadAnchorNode.setAttribute("href", dataStr);
+            downloadAnchorNode.setAttribute("download", "clinic_backup_" + new Date().toLocaleDateString('en-CA') + ".json");
+            document.body.appendChild(downloadAnchorNode);
+            downloadAnchorNode.click();
+            downloadAnchorNode.remove();
+            showToast('تم تصدير النسخة بنجاح ✓', 'success');
         };
 
         window.importBackupJSON = function (event) {
@@ -6925,30 +6604,24 @@
             reader.onload = async function (e) {
                 try {
                     const data = JSON.parse(e.target.result);
-                    if (!confirm('هل أنت متأكد من استرداد النسخة؟ سيتم الكتابة فوق كافة البيانات الحالية!')) return;
+                    if (!confirm('هل أنت متأكد من استرداد النسخة؟ سيتم مسح كافة البيانات الحالية!')) return;
 
-                    showToast('جاري استرداد البيانات...', 'info');
-                    // Write to Firebase if online
-                    if (window._isOnline) {
-                        try { await set(ref(firebaseDb, '/'), data); } catch(e) { console.warn('Firebase import failed:', e); }
-                    }
-                    // Always write to IndexedDB (offline-first)
-                    await window._ldb.importAll(data);
-                    
-                    if (data.settings) {
-                        window.clinicSettings = data.settings;
-                        localStorage.setItem('c_settings', JSON.stringify(data.settings));
-                    }
-                    if (data.pricing) {
-                        window.pricingTable = data.pricing;
-                        localStorage.setItem('c_pricing', JSON.stringify(data.pricing));
-                    }
+                    const updates = {};
+                    if (data.patients) updates['patients'] = data.patients;
+                    if (data.examinations) updates['examinations'] = data.examinations;
+                    if (data.prescriptions) updates['prescriptions'] = data.prescriptions;
+                    if (data.appointments) updates['appointments'] = data.appointments;
+                    if (data.manualRevenues) updates['manualRevenues'] = data.manualRevenues;
+                    if (data.settings) updates['settings'] = data.settings;
+                    if (data.pricing) updates['pricing'] = data.pricing;
+                    if (data.users) updates['users'] = data.users;
 
+                    await set(ref(firebaseDb, '/'), updates);
                     showToast('تم استرداد النسخة بنجاح! سيتم إعادة تحميل الصفحة.', 'success');
                     setTimeout(() => window.location.reload(), 2000);
                 } catch (err) {
-                    console.error('Import error:', err);
-                    showToast('ملف النسخة غير صالح', 'error');
+                    console.error(err);
+                    showToast('خطأ في استرداد الملف! تأكد من أنه ملف صالح.', 'error');
                 }
             };
             reader.readAsText(file);
@@ -7273,8 +6946,9 @@
                 const el = document.getElementById('cpf_' + f.id); if (el) data[
                     'cpf_' + f.id] = el.value;
             });
-            const newPatientResult = await window.smartPush('patients', data);
-            const newPatientKey = newPatientResult.key;
+            const newPatientRef = push(ref(firebaseDb, 'patients'));
+            const newPatientKey = newPatientRef.key;
+            await set(newPatientRef, data);
 
             // Ensure local memory has the new patient instantly to prevent race condition
             if (!window.allPatients) window.allPatients = {};
@@ -7346,8 +7020,9 @@
                 });
             }
 
-            const newPatientResult = await window.smartPush('patients', data);
-            const newPatientKey = newPatientResult.key;
+            const newPatientRef = push(ref(firebaseDb, 'patients'));
+            const newPatientKey = newPatientRef.key;
+            await set(newPatientRef, data);
 
             if (!window.allPatients) window.allPatients = {};
             window.allPatients[newPatientKey] = data;
@@ -8057,7 +7732,8 @@
                 const uploadPromises = window.tabExamTempAttachments.map(async (att) => {
                     if (att.isNew) {
                         try {
-                            const newAttResult = await window.smartPush('attachments', {
+                            const newAttRef = push(ref(firebaseDb, 'attachments'));
+                            await set(newAttRef, {
                                 patientId,
                                 name: att.name,
                                 data: att.data,
@@ -8073,7 +7749,7 @@
                                 date: data.examDate || getToday(),
                                 description: att.description || 'مرفق من الكشف/الزيارة',
                                 createdAt: Date.now(),
-                                attachmentKey: newAttResult.key
+                                attachmentKey: newAttRef.key
                             });
                         } catch (err) {
                             console.error('Failed to save global attachment', err);
@@ -8100,21 +7776,21 @@
 
             try {
                 if (editKey) {
-                    window.smartUpdate('examinations/' + editKey, data);
+                    update(ref(firebaseDb, 'examinations/' + editKey), data);
 
                     // Update linked prescription (text-based) - fire and forget
                     const linkedPrescEntry = Object.entries(window.allPrescriptions).find(([pk, p]) => p.examId === editKey);
                     if (linkedPrescEntry) {
                         if (prescriptionText) {
-                            window.smartUpdate('prescriptions/' + linkedPrescEntry[0], {
+                            update(ref(firebaseDb, 'prescriptions/' + linkedPrescEntry[0]), {
                                 prescriptionText,
                                 prescriptionDate: data.examDate
                             });
                         } else {
-                            window.smartRemove('prescriptions/' + linkedPrescEntry[0]);
+                            remove(ref(firebaseDb, 'prescriptions/' + linkedPrescEntry[0]));
                         }
                     } else if (prescriptionText) {
-                        window.smartPush('prescriptions', {
+                        set(push(ref(firebaseDb, 'prescriptions')), {
                             patientId, patientName: data.patientName, prescriptionDate: data.examDate,
                             prescriptionText, examId: editKey, createdAt: Date.now()
                         });
@@ -8123,23 +7799,23 @@
                     showToast('تم تحديث السجل ✓', 'success');
                     window.updateTodayAppointmentStatus(patientId, data.examDate, data.visitType);
                 } else {
-                    const newExamResult = await window.smartPush('examinations', data);
-                    const newExamKey = newExamResult.key;
+                    const newExamRef = push(ref(firebaseDb, 'examinations'));
+                    set(newExamRef, data);
 
                     // Save prescription as text - fire and forget
                     if (prescriptionText) {
-                        window.smartPush('prescriptions', {
+                        set(push(ref(firebaseDb, 'prescriptions')), {
                             patientId,
                             patientName: data.patientName,
                             prescriptionDate: data.examDate,
                             prescriptionText,
-                            examId: newExamKey,
+                            examId: newExamRef.key,
                             createdAt: Date.now()
                         });
                     }
 
                     if (data.nextApptDate) {
-                        window.smartPush('appointments', {
+                        set(push(ref(firebaseDb, 'appointments')), {
                             patientId, patientName: data.patientName, date: data.nextApptDate,
                             time: '18:00', type: 'متابعة عادية',
                             status: 'منتظر', isFollowUp: true, notes: '(موعد تم تحديده من خلال الدكتور)', createdAt: Date.now()
@@ -8211,7 +7887,7 @@
                 const diffDays = diffTime / (1000 * 60 * 60 * 24);
 
                 if (isFollowUp || diffDays <= 3) {
-                    await window.smartUpdate('appointments/' + closestKey, { status: 'منتظر' });
+                    await update(ref(firebaseDb, 'appointments/' + closestKey), { status: 'منتظر' });
                     console.log(`[Revert] Reverted appointment ${closestKey} status to منتظر due to exam deletion`);
                 }
             }
@@ -8224,7 +7900,7 @@
                 if (examData) {
                     await window.revertAppointmentStatusOnExamDelete(examData);
                 }
-                await window.smartRemove('examinations/' + key);
+                await remove(ref(firebaseDb, 'examinations/' + key));
                 showToast('تم الحذف بنجاح ✓', 'success');
                 window.renderPatientDetailContent('tab-history');
             } catch (e) {
@@ -8387,7 +8063,7 @@
                     reader.onload = async function (e) {
                         const data = e.target.result;
                         try {
-                            await window.smartPush('attachments', {
+                            await set(push(ref(firebaseDb, 'attachments')), {
                                 patientId,
                                 name: file.name,
                                 data,
@@ -8497,7 +8173,7 @@
                 if (!targetAtt) return showToast('المرفق غير موجود', 'error');
 
                 // 1. Delete from global attachments
-                await window.smartRemove('attachments/' + attKey);
+                await remove(ref(firebaseDb, 'attachments/' + attKey));
 
                 // 2. Scan and remove from examinations (using key or name/type fallback)
                 const examsToUpdate = Object.entries(window.allExaminations || {}).filter(([ek, ex]) => {
@@ -8514,9 +8190,9 @@
                     );
 
                     if (newAtts.length === 0) {
-                        await window.smartUpdate('examinations/' + ek, { attachments: null });
+                        await update(ref(firebaseDb, 'examinations/' + ek), { attachments: null });
                     } else {
-                        await window.smartUpdate('examinations/' + ek, { attachments: newAtts });
+                        await update(ref(firebaseDb, 'examinations/' + ek), { attachments: newAtts });
                     }
                 }
 
@@ -8534,7 +8210,7 @@
             const newName = prompt('تعديل اسم المرفق:', att.name);
             if (newName === null) return;
             try {
-                await window.smartUpdate('attachments/' + attKey, { name: newName });
+                await update(ref(firebaseDb, 'attachments/' + attKey), { name: newName });
                 showToast('تم التحديث بنجاح', 'success');
                 renderPatientDetailContent('tab-attachments');
             } catch (e) {
@@ -8554,11 +8230,7 @@
                 window.clinicSettings.pricingTable = pricing;
 
                 // Save to Firebase (consistent with loadSettings which expects it inside settings)
-                if (window._isOnline) {
-                    try { await update(ref(firebaseDb, 'settings'), { pricingTable: pricing }); }
-                    catch(e) { await window._ldb.enqueue({ op:'update', path:'settings', data: { pricingTable: pricing } }); }
-                } else { await window._ldb.enqueue({ op:'update', path:'settings', data: { pricingTable: pricing } }); }
-                try { localStorage.setItem('c_settings', JSON.stringify(window.clinicSettings)); } catch(e) {}
+                await update(ref(firebaseDb, 'settings'), { pricingTable: pricing });
 
                 showToast('تم حفظ الأسعار بنجاح ✓', 'success');
                 renderPricingSettings(); // Ensure inputs show current saved state
@@ -8875,7 +8547,7 @@
 
             ex.attachments[attIdx].name = newName;
             try {
-                await window.smartUpdate('examinations/' + examKey, { attachments: ex.attachments });
+                await update(ref(firebaseDb, 'examinations/' + examKey), { attachments: ex.attachments });
                 showToast('تم التعديل بنجاح ✓', 'success');
                 const modal = document.getElementById('examAttachmentsGalleryModal');
                 if (modal) modal.remove();
@@ -8918,7 +8590,7 @@
 
             ex.attachments.splice(attIdx, 1);
             try {
-                await window.smartUpdate('examinations/' + examKey, { attachments: ex.attachments });
+                await update(ref(firebaseDb, 'examinations/' + examKey), { attachments: ex.attachments });
                 showToast('تم حذف المرفق بنجاح ✓', 'success');
                 const modal = document.getElementById('examAttachmentsGalleryModal');
                 if (modal) modal.remove();
@@ -9267,7 +8939,7 @@
             if (!key) return;
             showToast('تم تحديث بيانات المريض ✓', 'success');
             bootstrap.Modal.getInstance(document.getElementById('editPatientModal'))?.hide();
-            window.smartUpdate('patients/' + key, {
+            update(ref(firebaseDb, 'patients/' + key), {
                 name: document.getElementById('editPatientName').value.trim(),
                 age: document.getElementById('editPatientAge').value,
                 gender: document.getElementById('editPatientGender').value,
@@ -9279,24 +8951,24 @@
             if (!key || !confirm('حذف المريض؟ سيتم حذف جميع المواعيد والكشوفات المرتبطة به.')) return;
             try {
                 // Delete Patient
-                await window.smartRemove('patients/' + key);
+                await remove(ref(firebaseDb, 'patients/' + key));
 
                 // Cascade delete associated data
                 const promises = [];
-                Object.entries(window.allAppointments || {}).forEach(([aKey, a]) => {
-                    if (a.patientId === key) promises.push(window.smartRemove('appointments/' + aKey));
+                Object.entries(window.allAppointments).forEach(([aKey, a]) => {
+                    if (a.patientId === key) promises.push(remove(ref(firebaseDb, 'appointments/' + aKey)));
                 });
-                Object.entries(window.allExaminations || {}).forEach(([eKey, e]) => {
-                    if (e.patientId === key) promises.push(window.smartRemove('examinations/' + eKey));
+                Object.entries(window.allExaminations).forEach(([eKey, e]) => {
+                    if (e.patientId === key) promises.push(remove(ref(firebaseDb, 'examinations/' + eKey)));
                 });
-                Object.entries(window.allPrescriptions || {}).forEach(([pKey, p]) => {
-                    if (p.patientId === key) promises.push(window.smartRemove('prescriptions/' + pKey));
+                Object.entries(window.allPrescriptions).forEach(([pKey, p]) => {
+                    if (p.patientId === key) promises.push(remove(ref(firebaseDb, 'prescriptions/' + pKey)));
                 });
 
                 await Promise.all(promises);
 
                 showToast('تم الحذف بنجاح', 'success');
-                renderAllPatientsTable(Object.values(window.allPatients || {}));
+                renderAllPatientsTable(Object.values(window.allPatients));
             } catch (e) {
                 console.error("Delete patient error", e);
                 showToast('حدث خطأ في عملية الحذف', 'error');
@@ -9316,7 +8988,7 @@
             if (!name) return showToast('اختر مريضاً', 'error');
             const apptType = document.getElementById('apptType').value;
             const isFollowUp = apptType.includes('متابعة');
-            await window.smartPush('appointments', {
+            await set(push(ref(firebaseDb, 'appointments')), {
                 patientId: document.getElementById('apptPatientId').value,
                 patientName: name,
                 date: document.getElementById('apptDate').value,
@@ -9396,7 +9068,7 @@
                     const backdrop = document.querySelector('.modal-backdrop');
                     if (backdrop) backdrop.remove();
                 }
-                window.smartUpdate('appointments/' + key, {
+                update(ref(firebaseDb, 'appointments/' + key), {
                     date: document.getElementById('editApptDate').value,
                     time: document.getElementById('editApptTime').value,
                     type: document.getElementById('editApptType').value,
@@ -9422,12 +9094,12 @@
             if (idx === -1) idx = 0;
             const next = statuses[(idx + 1) % statuses.length];
             showToast('الحالة: ' + next, 'info');
-            window.smartUpdate('appointments/' + key, { status: next });
+            update(ref(firebaseDb, 'appointments/' + key), { status: next });
         };
         window.deleteAppt = async function (key) {
             if (!confirm('حذف الموعد؟')) return;
             showToast('تم حذف الموعد ✓', 'success');
-            window.smartRemove('appointments/' + key).catch(e => {
+            remove(ref(firebaseDb, 'appointments/' + key)).catch(e => {
                 console.error(e);
                 showToast('حدث خطأ أثناء الحذف', 'error');
             });
@@ -9448,7 +9120,7 @@
 
             try {
                 for (const key of completedKeys) {
-                    await window.smartRemove('appointments/' + key);
+                    await remove(ref(firebaseDb, 'appointments/' + key));
                 }
                 showToast(`تم حذف ${completedKeys.length} موعد مكتمل بنجاح ✓`, 'success');
             } catch (e) {
@@ -9656,7 +9328,7 @@
         window.deletePrescription = async function (key) {
             if (!confirm('هل أنت متأكد من حذف هذه الروشتة؟')) return;
             showToast('تم حذف الروشتة ✓', 'success');
-            window.smartRemove('prescriptions/' + key).catch(e => {
+            remove(ref(firebaseDb, 'prescriptions/' + key)).catch(e => {
                 console.error(e);
                 showToast('خطأ أثناء الحذف', 'error');
             });
@@ -9673,7 +9345,7 @@
         window.deleteExam = async function (key) {
             if (!confirm('حذف الكشف؟')) return;
             showToast('تم الحذف ✓', 'success');
-            window.smartRemove('examinations/' + key).then(() => {
+            remove(ref(firebaseDb, 'examinations/' + key)).then(() => {
                 if (window.currentExamPatientId) renderExamHistory(window.currentExamPatientId);
             }).catch(e => {
                 console.error(e);
@@ -9929,11 +9601,11 @@
 
             if (window._editPrescriptionKey) {
                 showToast('تم تعديل الروشتة ✓', 'success');
-                window.smartUpdate('prescriptions/' + window._editPrescriptionKey, payload);
+                update(ref(firebaseDb, 'prescriptions/' + window._editPrescriptionKey), payload);
                 delete window._editPrescriptionKey;
             } else {
                 showToast('تم حفظ الروشتة ✓', 'success');
-                window.smartPush('prescriptions', payload);
+                set(push(ref(firebaseDb, 'prescriptions')), payload);
             }
 
             window.resetPrescriptionForm();
@@ -10021,7 +9693,7 @@
             const pr = window.allPrescriptions[key];
             if (pr && pr.examId) {
                 try {
-                    await window.smartUpdate('examinations/' + pr.examId, {
+                    await update(ref(firebaseDb, 'examinations/' + pr.examId), {
                         prescriptionText: ''
                     });
                 } catch (err) {
@@ -10029,7 +9701,7 @@
                 }
             }
 
-            await window.smartRemove('prescriptions/' + key);
+            await remove(ref(firebaseDb, 'prescriptions/' + key));
             showToast('تم الحذف', 'success');
 
             // Re-render standalone tab
@@ -10485,7 +10157,7 @@
             if (!key) return;
             showToast('تم تعديل الإيراد ✓', 'success');
             bootstrap.Modal.getInstance(document.getElementById('editRevenueModal'))?.hide();
-            window.smartUpdate('manualRevenues/' + key, {
+            update(ref(firebaseDb, 'manualRevenues/' + key), {
                 description: document.getElementById('editRevDesc').value,
                 amount: parseInt(document.getElementById('editRevAmount').value) || 0,
                 date: document.getElementById('editRevDate').value
@@ -10514,14 +10186,14 @@
             if (!desc || !amount) return showToast('أدخل البيان والمبلغ', 'error');
             if (window._editManualKey) {
                 showToast('تم تعديل الإيراد ✓', 'success');
-                window.smartUpdate('manualRevenues/' + window._editManualKey, {
+                update(ref(firebaseDb, 'manualRevenues/' + window._editManualKey), {
                     description: desc, amount,
                     date, patientName: 'يدوي'
                 });
                 delete window._editManualKey;
             } else {
                 showToast('تمت إضافة الإيراد ✓', 'success');
-                window.smartPush('manualRevenues', {
+                set(push(ref(firebaseDb, 'manualRevenues')), {
                     description: desc, amount, date,
                     patientName: 'يدوي', createdAt: Date.now()
                 });
@@ -10533,7 +10205,7 @@
         window.deleteManualRevenue = async function (key) {
             if (!confirm('حذف الإيراد؟')) return;
             showToast('تم حذف الإيراد ✓', 'success');
-            window.smartRemove('manualRevenues/' + key).catch(e => {
+            remove(ref(firebaseDb, 'manualRevenues/' + key)).catch(e => {
                 console.error(e);
                 showToast('حدث خطأ أثناء الحذف', 'error');
             });
@@ -10806,13 +10478,13 @@
                 perms[cb.id.replace('perm-', '')] = cb.checked;
             });
             if (window._editUserKey) {
-                await window.smartUpdate('users/' + window._editUserKey, { email, password, permissions: perms });
+                await update(ref(firebaseDb, 'users/' + window._editUserKey), { email, password, permissions: perms });
                 showToast('تم تعديل المستخدم ✓', 'success');
                 delete window._editUserKey;
                 const btn = document.getElementById('addUserBtn');
                 if (btn) btn.innerHTML = '<i class="fas fa-plus"></i> إضافة مستخدم';
             } else {
-                await window.smartPush('users', { email, password, permissions: perms });
+                await set(push(ref(firebaseDb, 'users')), { email, password, permissions: perms });
                 showToast('تم إضافة المستخدم ✓', 'success');
             }
             document.getElementById('newUserEmail').value = '';
@@ -10821,7 +10493,7 @@
         };
         window.deleteUser = async function (key) {
             if (!confirm('حذف المستخدم؟')) return;
-            await window.smartRemove('users/' + key);
+            await remove(ref(firebaseDb, 'users/' + key));
             showToast('تم الحذف', 'success');
             renderUsersList();
         };
