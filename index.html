@@ -6295,7 +6295,7 @@
                 // ابحث في السجل الطبي: هل يوجد فحص فعلي للمريض بنفس تاريخ الموعد بالضبط؟
                 if (!appt.patientId) return; // لا يمكن التحقق بدون patientId
 
-                // البحث عن فحص للمريض بتاريخ في نطاق 30 يوم من تاريخ الموعد
+                // البحث عن فحص للمريض بتاريخ في نطاق 3 أيام من تاريخ الموعد
                 // (المريض قد يأتي في يوم مختلف عن موعده المحجوز، قبل أو بعد)
                 // ويجب أن يكون الفحص تم إنشاؤه بعد حجز الموعد أو معه (لتجنب استخدام الفحوصات القديمة السابقة لحجز الموعد)
                 const matchingExam = Object.values(window.allExaminations).find(e => {
@@ -6308,7 +6308,7 @@
                     
                     const diffTime = Math.abs(new Date(e.examDate) - new Date(appt.date));
                     const diffDays = diffTime / (1000 * 60 * 60 * 24);
-                    return diffDays <= 30;
+                    return diffDays <= 3;
                 });
 
                 // فقط لو وُجد فحص حقيقي، غيّر الحالة
@@ -6332,7 +6332,7 @@
                 // إذا كان الموعد في الماضي أو اليوم أو حتى المستقبل (حيث يمكن أن يحضر مبكراً): تحقق هل يوجد فحص فعلي
                 if (!appt.patientId) continue; // بدون patientId لا يمكن التحقق
 
-                // تحقق: هل يوجد فحص بتاريخ في نطاق 30 يوم من تاريخ الموعد وتم إنشاؤه بعد الموعد أو معه؟
+                // تحقق: هل يوجد فحص بتاريخ في نطاق 3 أيام من تاريخ الموعد وتم إنشاؤه بعد الموعد أو معه؟
                 const hasRealExam = Object.values(window.allExaminations || {}).some(e => {
                     if (e.patientId !== appt.patientId) return false;
                     
@@ -6343,7 +6343,7 @@
                     
                     const diffTime = Math.abs(new Date(e.examDate) - new Date(appt.date));
                     const diffDays = diffTime / (1000 * 60 * 60 * 24);
-                    return diffDays <= 30;
+                    return diffDays <= 3;
                 });
 
                 if (!hasRealExam) {
@@ -6364,9 +6364,28 @@
             const isFollowUp = visitType && (visitType.includes('متابعة') || visitType.includes('إعادة'));
             const targetStatus = isFollowUp ? 'تم الإعادة' : 'تم الكشف';
 
-            // البحث عن المواعيد المعلقة للمريض (غير مرتبطة بالتاريخ لتغطية الحضور المبكر والمتأخر)
+            // دالة توحيد الحروف لمقارنة الأسماء بدقة
+            const normalizeName = (name) => {
+                if (!name) return '';
+                return name.trim()
+                    .replace(/[\s]+/g, ' ')
+                    .replace(/[أإآا]/g, 'ا')
+                    .replace(/ى/g, 'ي')
+                    .replace(/ه/g, 'ة');
+            };
+
+            const patient = window.allPatients[patientId];
+            const patientName = patient ? patient.name : '';
+            const normTargetName = normalizeName(patientName);
+
+            // البحث عن المواعيد المعلقة للمريض (بالمعرف أو بالاسم الموحد)
             const pendingAppts = Object.entries(window.allAppointments || {}).filter(([ak, appt]) => {
-                return appt.patientId === patientId && (!appt.status || !appt.status.startsWith('تم'));
+                const isPending = !appt.status || !appt.status.startsWith('تم');
+                if (!isPending) return false;
+
+                const sameId = appt.patientId && appt.patientId === patientId;
+                const sameName = normTargetName && normalizeName(appt.patientName) === normTargetName;
+                return sameId || sameName;
             });
 
             if (pendingAppts.length > 0) {
@@ -6377,9 +6396,22 @@
                     return diffA - diffB;
                 });
 
-                // تحديث الموعد الأقرب فقط لضمان دقة النظام
+                // تحديث الموعد الأقرب فقط لضمان دقة النظام بشرط أن يكون قريباً من تاريخ الكشف (في حدود 3 أيام) أو إذا كان نوع الزيارة متابعة/إعادة
                 const [closestKey, closestAppt] = pendingAppts[0];
-                await update(ref(firebaseDb, 'appointments/' + closestKey), { status: targetStatus });
+                const apptDate = new Date(closestAppt.date);
+                const examDate = new Date(dateStr);
+                apptDate.setHours(0,0,0,0);
+                examDate.setHours(0,0,0,0);
+                const diffTime = Math.abs(apptDate - examDate);
+                const diffDays = diffTime / (1000 * 60 * 60 * 24);
+
+                if (isFollowUp || diffDays <= 3) {
+                    // تحديث الحالة وتحديث معرف المريض أيضاً إذا كان مفقوداً لربطه بشكل دائم
+                    await update(ref(firebaseDb, 'appointments/' + closestKey), { 
+                        status: targetStatus,
+                        patientId: patientId 
+                    });
+                }
             }
         };
 
