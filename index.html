@@ -223,11 +223,13 @@
             --text-muted: #64748b;
             --border: #e2e8f0;
             --border-light: #f1f5f9;
-            --border-glass: rgba(255, 255, 255, 0.3);
+            --border-glass: rgba(0, 0, 0, 0.08);
+            --glass-border: 1px solid var(--border-glass);
             --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
             --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
             --shadow-md: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
             --shadow-lg: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+            --glass-shadow: 0 10px 30px rgba(0, 0, 0, 0.05);
             --shadow-glow: 0 0 20px rgba(99, 102, 241, 0.15);
             --radius: 24px;
             --radius-sm: 16px;
@@ -335,7 +337,9 @@
             --border: rgba(255, 255, 255, 0.08);
             --border-light: rgba(255, 255, 255, 0.04);
             --border-glass: rgba(255, 255, 255, 0.1);
+            --glass-border: 1px solid var(--border-glass);
             --shadow-lg: 0 25px 60px -15px rgba(0, 0, 0, 0.6);
+            --glass-shadow: 0 15px 35px rgba(0, 0, 0, 0.4);
             background: #090c14;
             background-image:
                 radial-gradient(at 0% 0%, rgba(99, 102, 241, 0.15) 0px, transparent 50%),
@@ -697,16 +701,14 @@
             margin-bottom: 20px;
             border: 2px solid var(--primary-light);
             box-shadow: var(--shadow-sm);
-            color: #ffffff !important;
+            color: var(--text);
+            transition: all 0.3s ease;
         }
 
         body.dark-mode .clinical-section {
             background: rgba(16, 22, 36, 0.6);
             border-color: rgba(99, 102, 241, 0.3);
-        }
-
-        .clinical-section {
-            transition: all 0.3s ease;
+            color: #ffffff !important;
         }
 
         .clinical-section:hover {
@@ -714,37 +716,56 @@
         }
 
         .clinical-section label {
-            color: #ffffff !important;
+            color: var(--text);
             font-weight: 800 !important;
             margin-bottom: 8px;
             display: block;
         }
 
+        body.dark-mode .clinical-section label {
+            color: #ffffff !important;
+        }
+
         .clinical-section input,
         .clinical-section textarea,
         .clinical-section select {
-            background: rgba(255, 255, 255, 0.1) !important;
-            border: 1.5px solid rgba(255, 255, 255, 0.2) !important;
-            color: #ffffff !important;
+            background: var(--surface) !important;
+            border: 1.5px solid var(--border) !important;
+            color: var(--text) !important;
             font-weight: 700 !important;
             border-radius: 12px;
         }
 
+        body.dark-mode .clinical-section input,
+        body.dark-mode .clinical-section textarea,
+        body.dark-mode .clinical-section select {
+            background: rgba(255, 255, 255, 0.05) !important;
+            border: 1.5px solid rgba(255, 255, 255, 0.15) !important;
+            color: #ffffff !important;
+        }
+
         .clinical-section input::placeholder,
         .clinical-section textarea::placeholder {
-            color: rgba(255, 255, 255, 0.5) !important;
+            color: var(--text-muted) !important;
         }
 
         .clinical-section input:focus,
         .clinical-section textarea:focus {
-            background: rgba(255, 255, 255, 0.2) !important;
-            border-color: #fff !important;
-            box-shadow: 0 0 0 4px rgba(255, 255, 255, 0.1) !important;
+            background: var(--surface) !important;
+            border-color: var(--primary) !important;
+            box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.15) !important;
+        }
+
+        body.dark-mode .clinical-section input:focus,
+        body.dark-mode .clinical-section textarea:focus {
+            background: rgba(255, 255, 255, 0.1) !important;
+            border-color: var(--primary) !important;
+            box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.2) !important;
         }
 
         .sugar-test-card {
-            background: rgba(15, 23, 42, 0.4);
-            border: 1.5px dashed rgba(255, 255, 255, 0.2);
+            background: var(--surface-glass);
+            border: 1.5px dashed var(--border);
             border-radius: 14px;
             padding: 12px 16px;
             cursor: pointer;
@@ -754,10 +775,20 @@
             overflow: hidden;
         }
 
+        body.dark-mode .sugar-test-card {
+            background: rgba(15, 23, 42, 0.4);
+            border: 1.5px dashed rgba(255, 255, 255, 0.2);
+        }
+
         .sugar-test-card:hover {
+            background: var(--bg);
+            border-color: var(--primary);
+            transform: translateY(-2px);
+        }
+
+        body.dark-mode .sugar-test-card:hover {
             background: rgba(15, 23, 42, 0.6);
             border-color: rgba(255, 255, 255, 0.4);
-            transform: translateY(-2px);
         }
 
         .sugar-test-card.checked {
@@ -1077,7 +1108,7 @@
             position: absolute;
             inset: -2px;
             border-radius: inherit;
-            background: conic-gradient(from 0deg, transparent, var(--primary-light), var(--accent-light), transparent);
+            background: conic-gradient(from 0deg, transparent, var(--primary), var(--accent), transparent);
             animation: borderRotate 5s linear infinite;
             z-index: -1;
             opacity: 0;
@@ -2056,19 +2087,29 @@
         .search-option {
             padding: 20px !important;
             cursor: pointer;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.1) !important;
+            border-bottom: 1px solid var(--border) !important;
             transition: all 0.2s;
             display: flex !important;
             flex-direction: column !important;
             /* Stack name and meta vertically */
             gap: 10px !important;
-            color: #ffffff !important;
+            color: var(--text) !important;
             min-height: 110px !important;
             height: auto !important;
+            background: var(--surface) !important;
+        }
+
+        body.dark-mode .search-option {
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1) !important;
             background: rgba(255, 255, 255, 0.03) !important;
+            color: #ffffff !important;
         }
 
         .search-option:hover {
+            background: var(--bg) !important;
+        }
+
+        body.dark-mode .search-option:hover {
             background: rgba(255, 255, 255, 0.08) !important;
         }
 
@@ -2086,22 +2127,30 @@
         .search-option-info .opt-name {
             font-weight: 900 !important;
             font-size: 19px !important;
-            color: #ffffff !important;
+            color: var(--text) !important;
             margin-bottom: 8px !important;
             display: block !important;
         }
 
+        body.dark-mode .search-option-info .opt-name {
+            color: #ffffff !important;
+        }
+
         .search-option-info .opt-meta {
             font-size: 14px !important;
-            color: #00f2fe !important;
-            /* High contrast cyan */
-            background: rgba(0, 242, 254, 0.15) !important;
+            color: #008eb5 !important;
+            /* Darker cyan for light mode */
+            background: rgba(0, 242, 254, 0.1) !important;
             padding: 8px 12px !important;
             border-radius: 8px !important;
             display: block !important;
             font-weight: 800 !important;
             border: 1px solid rgba(0, 242, 254, 0.3) !important;
             width: 100% !important;
+        }
+        
+        body.dark-mode .search-option-info .opt-meta {
+            color: #00f2fe !important;
         }
 
         body.dark-mode .search-box input {
@@ -2117,14 +2166,14 @@
         /* Forms */
         .form-control,
         .form-select {
-            border: 1.5px solid rgba(255, 255, 255, 0.3);
+            border: 1px solid var(--border);
             border-radius: 10px;
             font-family: var(--font-main);
             font-size: 13px;
             transition: all 0.3s;
             color: var(--text);
             padding: 10px 14px;
-            background: rgba(255, 255, 255, 0.5);
+            background: var(--surface);
             backdrop-filter: blur(6px);
             -webkit-backdrop-filter: blur(6px);
         }
@@ -2132,9 +2181,9 @@
         .form-control:focus,
         .form-select:focus {
             border-color: var(--primary);
-            box-shadow: 0 0 0 6px rgba(8, 145, 178, 0.07);
+            box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.1);
             outline: none;
-            background: rgba(255, 255, 255, 0.7);
+            background: var(--surface);
         }
 
         .form-label {
@@ -3426,8 +3475,8 @@
         .card-panel,
         .glass-card,
         .modal-content {
-            border: 2px solid var(--primary-light) !important;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+            border: 1px solid var(--border) !important;
+            box-shadow: var(--glass-shadow);
         }
 
         body.dark-mode .card-panel,
@@ -4477,52 +4526,53 @@
                 <div class="card-panel py-5"
                     style="background:transparent;box-shadow:none;border:none;overflow:visible !important">
                     <div class="mx-auto" style="max-width:800px">
-                        <div
-                            style="background: var(--surface-glass); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); border: 1px solid var(--border-glass); border-radius: 24px; padding: 30px; box-shadow: 0 15px 35px rgba(0,0,0,0.05); position: relative; overflow: visible;">
-
-                            <div class="text-center mb-4">
-                                <div
-                                    style="width: 70px; height: 70px; background: linear-gradient(135deg, var(--primary-light), var(--accent-light)); border-radius: 20px; display: flex; align-items: center; justify-content: center; margin: 0 auto 15px; box-shadow: 0 10px 20px rgba(99, 102, 241, 0.2);">
-                                    <i class="fas fa-folder-open text-white" style="font-size: 30px;"></i>
+                        <div id="searchHeaderContainer"
+                            style="background: var(--surface-glass); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); border: 1px solid var(--border-glass); border-radius: 24px; padding: 30px; box-shadow: 0 15px 35px rgba(0,0,0,0.05); position: relative; overflow: visible; transition: all 0.4s ease;">
+                            
+                            <div id="searchHeaderInner" style="transition: all 0.4s ease; overflow: visible;">
+                                <div class="text-center mb-4">
+                                    <div
+                                        style="width: 70px; height: 70px; background: linear-gradient(135deg, var(--primary), var(--accent)); border-radius: 20px; display: flex; align-items: center; justify-content: center; margin: 0 auto 15px; box-shadow: 0 10px 20px rgba(99, 102, 241, 0.2);">
+                                        <i class="fas fa-folder-open text-white" style="font-size: 30px;"></i>
+                                    </div>
+                                    <h2 class="fw-bold gradient-doctor-name" style="font-size:28px">ملف المريض الشامل</h2>
+                                    <p class="text-muted mb-0">ابحث عن مريض مسجل أو ابدأ بتسجيل مريض جديد بضغطة زر</p>
                                 </div>
-                                <h2 class="fw-bold gradient-doctor-name" style="font-size:28px">ملف المريض الشامل</h2>
-                                <p class="text-muted mb-0">ابحث عن مريض مسجل أو ابدأ بتسجيل مريض جديد بضغطة زر</p>
-                            </div>
 
-                            <div class="search-box mb-4"
-                                style="min-height:70px; height: auto; position: relative; z-index: 10;">
-                                <div class="d-flex align-items-center position-relative">
-                                    <input type="text" id="globalSearchInput"
-                                        placeholder="اكتب اسم أو رقم المريض للبحث السريع..."
-                                        onfocus="window.globalSearchAction(this.value)"
-                                        oninput="window.globalSearchAction(this.value)" autocomplete="off"
-                                        style="font-size:18px; padding-right:65px; padding-left: 60px; height: 64px; border-radius: 16px; box-shadow: inset 0 2px 4px rgba(0,0,0,0.02); border: 2px solid transparent; transition: all 0.3s ease; width: 100%;">
-                                    <i class="fas fa-search"
-                                        style="font-size:22px; position: absolute; right:22px; top:50%; transform: translateY(-50%); color: var(--primary);"></i>
-                                    <button class="btn btn-sm btn-soft" onclick="window.startNewSearch()"
-                                        style="position: absolute; left: 10px; top: 50%; transform: translateY(-50%); border-radius: 12px; height: 44px; display: flex; align-items: center; justify-content: center; padding: 0 15px; font-weight: bold;"
-                                        title="مسح البحث">
-                                        <i class="fas fa-times me-1"></i> مسح
+                                <div class="search-box mb-4"
+                                    style="min-height:50px; height: auto; position: relative; z-index: 10;">
+                                    <div class="d-flex align-items-center position-relative">
+                                        <input type="text" id="globalSearchInput"
+                                            placeholder="اكتب اسم أو رقم المريض للبحث السريع..."
+                                            onfocus="window.globalSearchAction(this.value)"
+                                            oninput="window.globalSearchAction(this.value)" autocomplete="off"
+                                            style="font-size:15px; padding-right:45px; padding-left: 85px; height: 48px; border-radius: 12px; box-shadow: inset 0 2px 4px rgba(0,0,0,0.02); border: 1.5px solid var(--border); transition: all 0.3s ease; width: 100%;">
+                                        <i class="fas fa-search"
+                                            style="font-size:18px; position: absolute; right:15px; top:50%; transform: translateY(-50%); color: var(--primary);"></i>
+                                        <button class="btn btn-sm btn-soft" onclick="window.startNewSearch()"
+                                            style="position: absolute; left: 8px; top: 50%; transform: translateY(-50%); border-radius: 8px; height: 32px; display: flex; align-items: center; justify-content: center; padding: 0 12px; font-weight: bold; font-size: 12px;"
+                                            title="مسح البحث">
+                                            <i class="fas fa-times me-1"></i> مسح
+                                        </button>
+                                    </div>
+                                    <div id="globalSearchDropdown" class="search-dropdown"
+                                        style="top:55px; border-radius: 12px; box-shadow: 0 15px 30px rgba(0,0,0,0.1);">
+                                    </div>
+                                </div>
+
+                                <div class="d-flex justify-content-center gap-3">
+                                    <button class="btn btn-outline-teal px-4 py-3 rounded-4 fw-bold shadow-sm flex-grow-1"
+                                        onclick="window.showAllPatientsModal()"
+                                        style="transition: all 0.3s ease; display: flex; align-items: center; justify-content: center; gap: 10px; font-size: 16px; max-width: 250px;">
+                                        <i class="fas fa-users text-teal"></i> جميع المرضى
+                                    </button>
+                                    <button class="btn btn-gradient px-4 py-3 rounded-4 fw-bold shadow-sm flex-grow-1"
+                                        onclick="window.openQuickRegisterModal()"
+                                        style="transition: all 0.3s ease; display: flex; align-items: center; justify-content: center; gap: 10px; font-size: 16px; max-width: 300px;">
+                                        <i class="fas fa-user-plus text-white"></i> تسجيل مريض جديد
                                     </button>
                                 </div>
-                                <div id="globalSearchDropdown" class="search-dropdown"
-                                    style="top:75px; border-radius: 16px; box-shadow: 0 20px 40px rgba(0,0,0,0.1);">
-                                </div>
                             </div>
-
-                            <div class="d-flex justify-content-center gap-3">
-                                <button class="btn btn-outline-teal px-4 py-3 rounded-4 fw-bold shadow-sm flex-grow-1"
-                                    onclick="window.showAllPatientsModal()"
-                                    style="transition: all 0.3s ease; display: flex; align-items: center; justify-content: center; gap: 10px; font-size: 16px; max-width: 250px;">
-                                    <i class="fas fa-users text-teal"></i> جميع المرضى
-                                </button>
-                                <button class="btn btn-gradient px-4 py-3 rounded-4 fw-bold shadow-sm flex-grow-1"
-                                    onclick="window.openQuickRegisterModal()"
-                                    style="transition: all 0.3s ease; display: flex; align-items: center; justify-content: center; gap: 10px; font-size: 16px; max-width: 300px;">
-                                    <i class="fas fa-user-plus text-white"></i> تسجيل مريض جديد
-                                </button>
-                            </div>
-
                         </div>
                     </div>
                 </div>
@@ -6031,10 +6081,7 @@
         ensureAdminUser().then(checkAutoLogin);
 
         function initApp() {
-            if (window.isDarkMode) {
-                document.body.classList.add('dark-mode');
-                document.getElementById('darkModeIcon').className = 'fas fa-sun';
-            }
+            document.body.classList.add('dark-mode');
             updateDateTime();
             setInterval(updateDateTime, 30000);
             initNav();
@@ -6175,13 +6222,7 @@
             document.body.style.overflow = '';
         };
         window.toggleDarkMode = function () {
-            window.isDarkMode = !window.isDarkMode;
-            localStorage.setItem('darkMode', window.isDarkMode);
-            document.body.classList.toggle('dark-mode', window.isDarkMode);
-            document.getElementById('darkModeIcon').className = window.isDarkMode ? 'fas fa-sun' : 'fas fa-moon';
-            if (window.weeklyChartInstance) {
-                updateWeeklyChart();
-            }
+            // Dark mode is now permanently enabled
         };
         window.updateRegDay = function () {
             document.getElementById('patientRegDay').value = getArabicDay(document
@@ -6962,6 +7003,29 @@
             window.selectGlobalPatient(newPatientKey);
         }
 
+        window.toggleSearchHeader = function() {
+            const inner = document.getElementById('searchHeaderInner');
+            const container = document.getElementById('searchHeaderContainer');
+            const toggleIcon = document.getElementById('searchHeaderToggleIcon');
+            if (window.isSearchHeaderCollapsed) {
+                inner.style.display = 'block';
+                setTimeout(() => {
+                    inner.style.opacity = '1';
+                    inner.style.height = 'auto';
+                }, 10);
+                container.style.padding = '30px';
+                toggleIcon.className = 'fas fa-chevron-up';
+                window.isSearchHeaderCollapsed = false;
+            } else {
+                inner.style.opacity = '0';
+                inner.style.height = '0';
+                setTimeout(() => { inner.style.display = 'none'; }, 300);
+                container.style.padding = '15px 30px';
+                toggleIcon.className = 'fas fa-chevron-down';
+                window.isSearchHeaderCollapsed = true;
+            }
+        };
+
         window.startNewSearch = function () {
             const searchInput = document.getElementById('globalSearchInput');
             if (searchInput) {
@@ -7056,7 +7120,7 @@
                 return `
                 <div class="search-option" onclick="window.selectGlobalPatient('${k}')" 
                      style="display:block !important; padding:15px 20px !important; border-bottom:1px solid rgba(255,255,255,0.1) !important; cursor:pointer !important; min-height:100px !important; height:auto !important; background:rgba(255,255,255,0.02) !important; transition: background 0.2s !important;">
-                    <div style="font-weight:900 !important; font-size:18px !important; color:#ffffff !important; margin-bottom:8px !important; display:block !important; line-height:1.4 !important; text-align:right !important;">
+                    <div style="font-weight:900 !important; font-size:18px !important;  margin-bottom:8px !important; display:block !important; line-height:1.4 !important; text-align:right !important;">
                         ${p.name || 'مريض بدون اسم'}
                     </div>
                     <div style="font-size:13px !important; color:#00f2fe !important; background:rgba(0,242,254,0.1) !important; padding:6px 12px !important; border-radius:6px !important; border:1px solid rgba(0,242,254,0.3) !important; display:inline-block !important; font-weight:700 !important; line-height:1.5 !important; text-align:right !important;">
@@ -7074,6 +7138,9 @@
             window.globalSelectedPatientData = p;
             document.getElementById('globalSearchDropdown').classList.remove('open');
             document.getElementById('globalSearchInput').value = p.name;
+            
+            
+
             document.getElementById('selectedPatientContainer').style.display = 'block';
             renderPatientInfoBox(p, 'selectedPatientInfoBox');
             document.querySelectorAll('#patientDetailTabs .visit-type-pill').forEach(t => t.classList.remove('active'));
@@ -7086,6 +7153,59 @@
             const patientKey = Object.entries(window.allPatients).find(([k, v]) => v.patientId == p.patientId)?.[0] || '';
             const attCount = Object.values(window.allAttachments || {}).filter(att => att.patientId === patientKey).length;
 
+            const patientExams = Object.values(window.allExaminations || {}).filter(e => e.patientId === patientKey).sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+            const lastExam = patientExams.length > 0 ? patientExams[0] : null;
+
+            const patientPrescriptions = Object.values(window.allPrescriptions || {}).filter(pr => (pr.patientId === patientKey || pr.patientName === p.name)).sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+            const lastPresc = patientPrescriptions.length > 0 ? patientPrescriptions[0] : null;
+
+            let medNames = [];
+            if (lastPresc) {
+                if (lastPresc.medications && lastPresc.medications.length > 0) {
+                    medNames = lastPresc.medications.map(m => m.name);
+                } else if (lastPresc.prescriptionText) {
+                    medNames = lastPresc.prescriptionText.split('\n').map(s => s.replace(/^-+/, '').trim()).filter(s => s);
+                }
+            }
+            if (medNames.length === 0 && lastExam) {
+                if (lastExam.meds && lastExam.meds.length > 0) {
+                    medNames = lastExam.meds.map(m => m.name);
+                } else if (lastExam.prescriptionText) {
+                    medNames = lastExam.prescriptionText.split('\n').map(s => s.replace(/^-+/, '').trim()).filter(s => s);
+                }
+            }
+
+            let lastExamHtml = '';
+            if ((lastExam && (lastExam.medicalHistory || lastExam.chiefComplaint || lastExam.diagnosis)) || medNames.length > 0) {
+                lastExamHtml = `
+                <div class="mt-4 mb-2">
+                    <div style="font-size: 13px; font-weight: 900; color: var(--text); margin-bottom: 12px; display: flex; align-items: center; gap: 8px;">
+                        <div style="background: var(--accent); width: 4px; height: 18px; border-radius: 2px;"></div>
+                        <i class="fas fa-history" style="color: var(--accent);"></i> ملخص الكشف الأخير (${lastExam ? lastExam.examDate || '-' : '-'})
+                    </div>
+                    <div class="d-flex flex-wrap gap-2">
+                        ${(lastExam && lastExam.medicalHistory) ? `<div style="flex: 1; min-width: 160px; background: rgba(59, 130, 246, 0.08); border: 1px solid rgba(59, 130, 246, 0.2); border-radius: 12px; padding: 12px; transition: all 0.3s; box-shadow: 0 4px 15px rgba(0,0,0,0.02);" onmouseover="this.style.transform='translateY(-2px)'" onmouseout="this.style.transform='translateY(0)'">
+                            <span style="font-size: 10px; color: #3b82f6; font-weight: 900; display: flex; align-items: center; gap: 6px; margin-bottom: 8px;"><i class="fas fa-file-medical"></i> التاريخ المرضي</span>
+                            <div style="font-size: 12.5px; font-weight: 700; color: var(--text); line-height: 1.6;">${lastExam.medicalHistory}</div>
+                        </div>` : ''}
+                        ${(lastExam && lastExam.chiefComplaint) ? `<div style="flex: 1; min-width: 160px; background: rgba(245, 158, 11, 0.08); border: 1px solid rgba(245, 158, 11, 0.2); border-radius: 12px; padding: 12px; transition: all 0.3s; box-shadow: 0 4px 15px rgba(0,0,0,0.02);" onmouseover="this.style.transform='translateY(-2px)'" onmouseout="this.style.transform='translateY(0)'">
+                            <span style="font-size: 10px; color: #f59e0b; font-weight: 900; display: flex; align-items: center; gap: 6px; margin-bottom: 8px;"><i class="fas fa-exclamation-circle"></i> الشكوى</span>
+                            <div style="font-size: 12.5px; font-weight: 700; color: var(--text); line-height: 1.6;">${lastExam.chiefComplaint}</div>
+                        </div>` : ''}
+                        ${(lastExam && lastExam.diagnosis) ? `<div style="flex: 1; min-width: 160px; background: rgba(244, 63, 94, 0.08); border: 1px solid rgba(244, 63, 94, 0.2); border-radius: 12px; padding: 12px; transition: all 0.3s; box-shadow: 0 4px 15px rgba(0,0,0,0.02);" onmouseover="this.style.transform='translateY(-2px)'" onmouseout="this.style.transform='translateY(0)'">
+                            <span style="font-size: 10px; color: #f43f5e; font-weight: 900; display: flex; align-items: center; gap: 6px; margin-bottom: 8px;"><i class="fas fa-stethoscope"></i> التشخيص</span>
+                            <div style="font-size: 12.5px; font-weight: 700; color: var(--text); line-height: 1.6;">${lastExam.diagnosis}</div>
+                        </div>` : ''}
+                        ${medNames.length > 0 ? `<div style="flex: 2; min-width: 220px; background: rgba(16, 185, 129, 0.08); border: 1px solid rgba(16, 185, 129, 0.2); border-radius: 12px; padding: 12px; transition: all 0.3s; box-shadow: 0 4px 15px rgba(0,0,0,0.02);" onmouseover="this.style.transform='translateY(-2px)'" onmouseout="this.style.transform='translateY(0)'">
+                            <span style="font-size: 10px; color: #10b981; font-weight: 900; display: flex; align-items: center; gap: 6px; margin-bottom: 8px;"><i class="fas fa-pills"></i> الأدوية السابقة</span>
+                            <div style="font-size: 12.5px; font-weight: 700; color: var(--text); line-height: 1.6;">
+                                <ul style="padding-right: 22px; margin: 0; list-style-type: disc;">${medNames.map(m => `<li style="margin-bottom: 3px;">${m}</li>`).join('')}</ul>
+                            </div>
+                        </div>` : ''}
+                    </div>
+                </div>
+                `;
+            }
             document.getElementById(targetId).innerHTML = `
             <div class="d-flex align-items-center gap-3 mb-4" style="flex-wrap: wrap; justify-content: space-between; width: 100%;">
               <div class="d-flex align-items-center gap-3">
@@ -7096,7 +7216,7 @@
                 </div>
               </div>
               
-              <div class="d-flex align-items-center gap-2" style="background: rgba(34, 211, 238, 0.08); border: 1px solid rgba(34, 211, 238, 0.2); padding: 8px 16px; border-radius: 12px; cursor: pointer; transition: all 0.2s;" onclick="window.openAttachmentsGallery('${patientKey}')" onmouseover="this.style.background='rgba(34,211,238,0.15)'" onmouseout="this.style.background='rgba(34, 211, 238, 0.08)'">
+              <div class="d-flex align-items-center gap-2" style="background: rgba(34, 211, 238, 0.08); border: 1px solid rgba(34, 211, 238, 0.2); padding: 8px 16px; border-radius: 12px; cursor: pointer; transition: all 0.2s;" onclick="window.openAttachmentsGallery('${patientKey}')" onmouseover="this.style.background='var(--border)'" onmouseout="this.style.background='rgba(34, 211, 238, 0.08)'">
                 <i class="fas fa-paperclip fa-lg text-cyan"></i>
                 <div style="text-align: right;">
                     <div class="text-white-50 small" style="font-size: 10px; font-weight: 700;">المرفقات المسجلة</div>
@@ -7129,7 +7249,8 @@
                         <strong style="font-size:16px;color:var(--text);display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${p.address || '-'}</strong>
                     </div>
                 </div>
-            </div>`;
+            </div>
+            ${lastExamHtml}`;
         }
 
         function initPatientTabs() {
@@ -7228,46 +7349,46 @@
                                         <table style="width:100%;border-collapse:collapse;background:rgba(10,20,40,0.7)">
                                             <thead>
                                                 <tr style="background:rgba(0,0,0,0.4);border-bottom:2px solid #22d3ee">
-                                                    <th style="padding:8px 12px;color:#22d3ee;font-size:11px;font-weight:700;letter-spacing:1px;text-align:right">DIMENSION</th>
-                                                    <th style="padding:8px 12px;color:#22d3ee;font-size:11px;font-weight:700;letter-spacing:1px;text-align:center">القياس (CM/%)</th>
-                                                    <th style="padding:8px 12px;color:#22d3ee;font-size:11px;font-weight:700;letter-spacing:1px;text-align:center">NORMAL RANGE</th>
+                                                    <th style="padding:8px 12px;color:var(--primary);font-size:11px;font-weight:700;letter-spacing:1px;text-align:right">DIMENSION</th>
+                                                    <th style="padding:8px 12px;color:var(--primary);font-size:11px;font-weight:700;letter-spacing:1px;text-align:center">القياس (CM/%)</th>
+                                                    <th style="padding:8px 12px;color:var(--primary);font-size:11px;font-weight:700;letter-spacing:1px;text-align:center">NORMAL RANGE</th>
                                                 </tr>
                                             </thead>
                                             <tbody>
-                                                <tr style="border-bottom:1px solid rgba(34,211,238,0.15)">
-                                                    <td style="padding:6px 12px;color:#e2e8f0;font-weight:600;font-size:12px">Left Atrium</td>
-                                                    <td style="padding:4px 8px"><input type="text" class="form-control form-control-sm echo-field" data-field="Left Atrium" placeholder="Cm" style="background:rgba(255,255,255,0.08);border:1px solid rgba(34,211,238,0.3);color:#fff;text-align:center"></td>
-                                                    <td style="padding:6px 12px;color:#22d3ee;font-size:11px;font-weight:700;text-align:center">Cm 3.8 – 1.9</td>
+                                                <tr style="border-bottom:1px solid var(--border)">
+                                                    <td style="padding:6px 12px;color:var(--text);font-weight:600;font-size:12px">Left Atrium</td>
+                                                    <td style="padding:4px 8px"><input type="text" class="form-control form-control-sm echo-field" data-field="Left Atrium" placeholder="Cm" style="background:var(--surface-glass);border:1px solid var(--border);color:var(--text);text-align:center"></td>
+                                                    <td style="padding:6px 12px;color:var(--primary);font-size:11px;font-weight:700;text-align:center">Cm 3.8 – 1.9</td>
                                                 </tr>
-                                                <tr style="border-bottom:1px solid rgba(34,211,238,0.15)">
-                                                    <td style="padding:6px 12px;color:#e2e8f0;font-weight:600;font-size:12px">Aortic Root</td>
-                                                    <td style="padding:4px 8px"><input type="text" class="form-control form-control-sm echo-field" data-field="Aortic Root" placeholder="Cm" style="background:rgba(255,255,255,0.08);border:1px solid rgba(34,211,238,0.3);color:#fff;text-align:center"></td>
-                                                    <td style="padding:6px 12px;color:#22d3ee;font-size:11px;font-weight:700;text-align:center">Cm 3.7 – 1.9</td>
+                                                <tr style="border-bottom:1px solid var(--border)">
+                                                    <td style="padding:6px 12px;color:var(--text);font-weight:600;font-size:12px">Aortic Root</td>
+                                                    <td style="padding:4px 8px"><input type="text" class="form-control form-control-sm echo-field" data-field="Aortic Root" placeholder="Cm" style="background:var(--surface-glass);border:1px solid var(--border);color:var(--text);text-align:center"></td>
+                                                    <td style="padding:6px 12px;color:var(--primary);font-size:11px;font-weight:700;text-align:center">Cm 3.7 – 1.9</td>
                                                 </tr>
-                                                <tr style="border-bottom:1px solid rgba(34,211,238,0.15)">
-                                                    <td style="padding:6px 12px;color:#e2e8f0;font-weight:600;font-size:12px">LV End Diastole</td>
-                                                    <td style="padding:4px 8px"><input type="text" class="form-control form-control-sm echo-field" data-field="LV End Diastole" placeholder="Cm" style="background:rgba(255,255,255,0.08);border:1px solid rgba(34,211,238,0.3);color:#fff;text-align:center"></td>
-                                                    <td style="padding:6px 12px;color:#22d3ee;font-size:11px;font-weight:700;text-align:center">Cm 5.3 – 3.5</td>
+                                                <tr style="border-bottom:1px solid var(--border)">
+                                                    <td style="padding:6px 12px;color:var(--text);font-weight:600;font-size:12px">LV End Diastole</td>
+                                                    <td style="padding:4px 8px"><input type="text" class="form-control form-control-sm echo-field" data-field="LV End Diastole" placeholder="Cm" style="background:var(--surface-glass);border:1px solid var(--border);color:var(--text);text-align:center"></td>
+                                                    <td style="padding:6px 12px;color:var(--primary);font-size:11px;font-weight:700;text-align:center">Cm 5.3 – 3.5</td>
                                                 </tr>
-                                                <tr style="border-bottom:1px solid rgba(34,211,238,0.15)">
-                                                    <td style="padding:6px 12px;color:#e2e8f0;font-weight:600;font-size:12px">LV End Systole</td>
-                                                    <td style="padding:4px 8px"><input type="text" class="form-control form-control-sm echo-field" data-field="LV End Systole" placeholder="Cm" style="background:rgba(255,255,255,0.08);border:1px solid rgba(34,211,238,0.3);color:#fff;text-align:center"></td>
-                                                    <td style="padding:6px 12px;color:#22d3ee;font-size:11px;font-weight:700;text-align:center">Cm 4.0 – 2.2</td>
+                                                <tr style="border-bottom:1px solid var(--border)">
+                                                    <td style="padding:6px 12px;color:var(--text);font-weight:600;font-size:12px">LV End Systole</td>
+                                                    <td style="padding:4px 8px"><input type="text" class="form-control form-control-sm echo-field" data-field="LV End Systole" placeholder="Cm" style="background:var(--surface-glass);border:1px solid var(--border);color:var(--text);text-align:center"></td>
+                                                    <td style="padding:6px 12px;color:var(--primary);font-size:11px;font-weight:700;text-align:center">Cm 4.0 – 2.2</td>
                                                 </tr>
-                                                <tr style="border-bottom:1px solid rgba(34,211,238,0.15)">
-                                                    <td style="padding:6px 12px;color:#e2e8f0;font-weight:600;font-size:12px">Septal Wall (Diastole)</td>
-                                                    <td style="padding:4px 8px"><input type="text" class="form-control form-control-sm echo-field" data-field="Septal Wall (Diastole)" placeholder="Cm" style="background:rgba(255,255,255,0.08);border:1px solid rgba(34,211,238,0.3);color:#fff;text-align:center"></td>
-                                                    <td style="padding:6px 12px;color:#22d3ee;font-size:11px;font-weight:700;text-align:center">Cm 0.9 – 0.6</td>
+                                                <tr style="border-bottom:1px solid var(--border)">
+                                                    <td style="padding:6px 12px;color:var(--text);font-weight:600;font-size:12px">Septal Wall (Diastole)</td>
+                                                    <td style="padding:4px 8px"><input type="text" class="form-control form-control-sm echo-field" data-field="Septal Wall (Diastole)" placeholder="Cm" style="background:var(--surface-glass);border:1px solid var(--border);color:var(--text);text-align:center"></td>
+                                                    <td style="padding:6px 12px;color:var(--primary);font-size:11px;font-weight:700;text-align:center">Cm 0.9 – 0.6</td>
                                                 </tr>
-                                                <tr style="border-bottom:1px solid rgba(34,211,238,0.15)">
-                                                    <td style="padding:6px 12px;color:#e2e8f0;font-weight:600;font-size:12px">Posterior Wall (Diastole)</td>
-                                                    <td style="padding:4px 8px"><input type="text" class="form-control form-control-sm echo-field" data-field="Posterior Wall (Diastole)" placeholder="Cm" style="background:rgba(255,255,255,0.08);border:1px solid rgba(34,211,238,0.3);color:#fff;text-align:center"></td>
-                                                    <td style="padding:6px 12px;color:#22d3ee;font-size:11px;font-weight:700;text-align:center">Cm 0.9 – 0.6</td>
+                                                <tr style="border-bottom:1px solid var(--border)">
+                                                    <td style="padding:6px 12px;color:var(--text);font-weight:600;font-size:12px">Posterior Wall (Diastole)</td>
+                                                    <td style="padding:4px 8px"><input type="text" class="form-control form-control-sm echo-field" data-field="Posterior Wall (Diastole)" placeholder="Cm" style="background:var(--surface-glass);border:1px solid var(--border);color:var(--text);text-align:center"></td>
+                                                    <td style="padding:6px 12px;color:var(--primary);font-size:11px;font-weight:700;text-align:center">Cm 0.9 – 0.6</td>
                                                 </tr>
                                                 <tr>
-                                                    <td style="padding:6px 12px;color:#e2e8f0;font-weight:600;font-size:12px">Ejection Fraction %</td>
-                                                    <td style="padding:4px 8px"><input type="text" class="form-control form-control-sm echo-field" data-field="% Ejection Fraction" placeholder="%" style="background:rgba(255,255,255,0.08);border:1px solid rgba(34,211,238,0.3);color:#fff;text-align:center"></td>
-                                                    <td style="padding:6px 12px;color:#22d3ee;font-size:11px;font-weight:700;text-align:center">55% ≤</td>
+                                                    <td style="padding:6px 12px;color:var(--text);font-weight:600;font-size:12px">Ejection Fraction %</td>
+                                                    <td style="padding:4px 8px"><input type="text" class="form-control form-control-sm echo-field" data-field="% Ejection Fraction" placeholder="%" style="background:var(--surface-glass);border:1px solid var(--border);color:var(--text);text-align:center"></td>
+                                                    <td style="padding:6px 12px;color:var(--primary);font-size:11px;font-weight:700;text-align:center">55% ≤</td>
                                                 </tr>
                                             </tbody>
                                         </table>
@@ -7401,19 +7522,19 @@
                                         <table style="width:100%;border-collapse:collapse;background:rgba(10,20,40,0.7)">
                                             <thead>
                                                 <tr style="background:rgba(0,0,0,0.4);border-bottom:2px solid #22d3ee">
-                                                    <th style="padding:8px 12px;color:#22d3ee;font-size:11px;font-weight:700;letter-spacing:1px;text-align:right">DIMENSION</th>
-                                                    <th style="padding:8px 12px;color:#22d3ee;font-size:11px;font-weight:700;letter-spacing:1px;text-align:center">القياس (CM/%)</th>
-                                                    <th style="padding:8px 12px;color:#22d3ee;font-size:11px;font-weight:700;letter-spacing:1px;text-align:center">NORMAL RANGE</th>
+                                                    <th style="padding:8px 12px;color:var(--primary);font-size:11px;font-weight:700;letter-spacing:1px;text-align:right">DIMENSION</th>
+                                                    <th style="padding:8px 12px;color:var(--primary);font-size:11px;font-weight:700;letter-spacing:1px;text-align:center">القياس (CM/%)</th>
+                                                    <th style="padding:8px 12px;color:var(--primary);font-size:11px;font-weight:700;letter-spacing:1px;text-align:center">NORMAL RANGE</th>
                                                 </tr>
                                             </thead>
                                             <tbody>
-                                                <tr style="border-bottom:1px solid rgba(34,211,238,0.15)"><td style="padding:6px 12px;color:#e2e8f0;font-weight:600;font-size:12px">Left Atrium</td><td style="padding:4px 8px"><input type="text" class="form-control form-control-sm echo-field" data-field="Left Atrium" placeholder="Cm" style="background:rgba(255,255,255,0.08);border:1px solid rgba(34,211,238,0.3);color:#fff;text-align:center"></td><td style="padding:6px 12px;color:#22d3ee;font-size:11px;font-weight:700;text-align:center">Cm 3.8 – 1.9</td></tr>
-                                                <tr style="border-bottom:1px solid rgba(34,211,238,0.15)"><td style="padding:6px 12px;color:#e2e8f0;font-weight:600;font-size:12px">Aortic Root</td><td style="padding:4px 8px"><input type="text" class="form-control form-control-sm echo-field" data-field="Aortic Root" placeholder="Cm" style="background:rgba(255,255,255,0.08);border:1px solid rgba(34,211,238,0.3);color:#fff;text-align:center"></td><td style="padding:6px 12px;color:#22d3ee;font-size:11px;font-weight:700;text-align:center">Cm 3.7 – 1.9</td></tr>
-                                                <tr style="border-bottom:1px solid rgba(34,211,238,0.15)"><td style="padding:6px 12px;color:#e2e8f0;font-weight:600;font-size:12px">LV End Diastole</td><td style="padding:4px 8px"><input type="text" class="form-control form-control-sm echo-field" data-field="LV End Diastole" placeholder="Cm" style="background:rgba(255,255,255,0.08);border:1px solid rgba(34,211,238,0.3);color:#fff;text-align:center"></td><td style="padding:6px 12px;color:#22d3ee;font-size:11px;font-weight:700;text-align:center">Cm 5.3 – 3.5</td></tr>
-                                                <tr style="border-bottom:1px solid rgba(34,211,238,0.15)"><td style="padding:6px 12px;color:#e2e8f0;font-weight:600;font-size:12px">LV End Systole</td><td style="padding:4px 8px"><input type="text" class="form-control form-control-sm echo-field" data-field="LV End Systole" placeholder="Cm" style="background:rgba(255,255,255,0.08);border:1px solid rgba(34,211,238,0.3);color:#fff;text-align:center"></td><td style="padding:6px 12px;color:#22d3ee;font-size:11px;font-weight:700;text-align:center">Cm 4.0 – 2.2</td></tr>
-                                                <tr style="border-bottom:1px solid rgba(34,211,238,0.15)"><td style="padding:6px 12px;color:#e2e8f0;font-weight:600;font-size:12px">Septal Wall (Diastole)</td><td style="padding:4px 8px"><input type="text" class="form-control form-control-sm echo-field" data-field="Septal Wall (Diastole)" placeholder="Cm" style="background:rgba(255,255,255,0.08);border:1px solid rgba(34,211,238,0.3);color:#fff;text-align:center"></td><td style="padding:6px 12px;color:#22d3ee;font-size:11px;font-weight:700;text-align:center">Cm 0.9 – 0.6</td></tr>
-                                                <tr style="border-bottom:1px solid rgba(34,211,238,0.15)"><td style="padding:6px 12px;color:#e2e8f0;font-weight:600;font-size:12px">Posterior Wall (Diastole)</td><td style="padding:4px 8px"><input type="text" class="form-control form-control-sm echo-field" data-field="Posterior Wall (Diastole)" placeholder="Cm" style="background:rgba(255,255,255,0.08);border:1px solid rgba(34,211,238,0.3);color:#fff;text-align:center"></td><td style="padding:6px 12px;color:#22d3ee;font-size:11px;font-weight:700;text-align:center">Cm 0.9 – 0.6</td></tr>
-                                                <tr><td style="padding:6px 12px;color:#e2e8f0;font-weight:600;font-size:12px">Ejection Fraction %</td><td style="padding:4px 8px"><input type="text" class="form-control form-control-sm echo-field" data-field="% Ejection Fraction" placeholder="%" style="background:rgba(255,255,255,0.08);border:1px solid rgba(34,211,238,0.3);color:#fff;text-align:center"></td><td style="padding:6px 12px;color:#22d3ee;font-size:11px;font-weight:700;text-align:center">55% ≤</td></tr>
+                                                <tr style="border-bottom:1px solid var(--border)"><td style="padding:6px 12px;color:var(--text);font-weight:600;font-size:12px">Left Atrium</td><td style="padding:4px 8px"><input type="text" class="form-control form-control-sm echo-field" data-field="Left Atrium" placeholder="Cm" style="background:var(--surface-glass);border:1px solid var(--border);color:var(--text);text-align:center"></td><td style="padding:6px 12px;color:var(--primary);font-size:11px;font-weight:700;text-align:center">Cm 3.8 – 1.9</td></tr>
+                                                <tr style="border-bottom:1px solid var(--border)"><td style="padding:6px 12px;color:var(--text);font-weight:600;font-size:12px">Aortic Root</td><td style="padding:4px 8px"><input type="text" class="form-control form-control-sm echo-field" data-field="Aortic Root" placeholder="Cm" style="background:var(--surface-glass);border:1px solid var(--border);color:var(--text);text-align:center"></td><td style="padding:6px 12px;color:var(--primary);font-size:11px;font-weight:700;text-align:center">Cm 3.7 – 1.9</td></tr>
+                                                <tr style="border-bottom:1px solid var(--border)"><td style="padding:6px 12px;color:var(--text);font-weight:600;font-size:12px">LV End Diastole</td><td style="padding:4px 8px"><input type="text" class="form-control form-control-sm echo-field" data-field="LV End Diastole" placeholder="Cm" style="background:var(--surface-glass);border:1px solid var(--border);color:var(--text);text-align:center"></td><td style="padding:6px 12px;color:var(--primary);font-size:11px;font-weight:700;text-align:center">Cm 5.3 – 3.5</td></tr>
+                                                <tr style="border-bottom:1px solid var(--border)"><td style="padding:6px 12px;color:var(--text);font-weight:600;font-size:12px">LV End Systole</td><td style="padding:4px 8px"><input type="text" class="form-control form-control-sm echo-field" data-field="LV End Systole" placeholder="Cm" style="background:var(--surface-glass);border:1px solid var(--border);color:var(--text);text-align:center"></td><td style="padding:6px 12px;color:var(--primary);font-size:11px;font-weight:700;text-align:center">Cm 4.0 – 2.2</td></tr>
+                                                <tr style="border-bottom:1px solid var(--border)"><td style="padding:6px 12px;color:var(--text);font-weight:600;font-size:12px">Septal Wall (Diastole)</td><td style="padding:4px 8px"><input type="text" class="form-control form-control-sm echo-field" data-field="Septal Wall (Diastole)" placeholder="Cm" style="background:var(--surface-glass);border:1px solid var(--border);color:var(--text);text-align:center"></td><td style="padding:6px 12px;color:var(--primary);font-size:11px;font-weight:700;text-align:center">Cm 0.9 – 0.6</td></tr>
+                                                <tr style="border-bottom:1px solid var(--border)"><td style="padding:6px 12px;color:var(--text);font-weight:600;font-size:12px">Posterior Wall (Diastole)</td><td style="padding:4px 8px"><input type="text" class="form-control form-control-sm echo-field" data-field="Posterior Wall (Diastole)" placeholder="Cm" style="background:var(--surface-glass);border:1px solid var(--border);color:var(--text);text-align:center"></td><td style="padding:6px 12px;color:var(--primary);font-size:11px;font-weight:700;text-align:center">Cm 0.9 – 0.6</td></tr>
+                                                <tr><td style="padding:6px 12px;color:var(--text);font-weight:600;font-size:12px">Ejection Fraction %</td><td style="padding:4px 8px"><input type="text" class="form-control form-control-sm echo-field" data-field="% Ejection Fraction" placeholder="%" style="background:var(--surface-glass);border:1px solid var(--border);color:var(--text);text-align:center"></td><td style="padding:6px 12px;color:var(--primary);font-size:11px;font-weight:700;text-align:center">55% ≤</td></tr>
                                             </tbody>
                                         </table>
                                     </div>
@@ -7527,7 +7648,7 @@
             if (!c) return;
             if (window.tempMedications.length === 0) { c.innerHTML = ''; return; }
             c.innerHTML = `
-                <table class="table table-sm table-bordered mt-2 mb-0" style="font-size:12px; color:#fff; border-color: rgba(255,255,255,0.1)">
+                <table class="table table-sm table-bordered mt-2 mb-0" style="font-size:12px; color:var(--text); border-color: var(--border)">
                     <thead style="background:rgba(255,255,255,0.1)">
                         <tr><th>الدواء</th><th>الجرعة</th><th>التكرار</th><th>المدة</th><th class="text-center">إجراء</th></tr>
                     </thead>
@@ -8035,7 +8156,7 @@
                 <div class="d-flex align-items-center gap-2 p-2 rounded-3" style="background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1)">
                     <i class="fas ${att.type.startsWith('image') ? 'fa-image text-cyan' : 'fa-file-pdf text-danger'}"></i>
                     <span class="text-white text-truncate" style="flex:1; font-size:12px">${att.name}</span>
-                    <input type="text" class="form-control form-control-sm border-white-10" placeholder="وصف المرفق..." value="${att.description || ''}" oninput="window.tabExamTempAttachments[${i}].description=this.value" style="width:180px; background:rgba(0,0,0,0.2); color:#fff; border:1px solid rgba(255,255,255,0.1)">
+                    <input type="text" class="form-control form-control-sm border-white-10" placeholder="وصف المرفق..." value="${att.description || ''}" oninput="window.tabExamTempAttachments[${i}].description=this.value" style="width:180px; background:var(--surface); color:var(--text); border:1px solid var(--border)">
                     <button type="button" class="btn-sm-action btn-delete-sm" onclick="window.removeTabExamAttachment(${i})"><i class="fas fa-trash"></i></button>
                 </div>
             `).join('');
@@ -8142,7 +8263,7 @@
                                     </div>
                                     <div class="p-2">
                                         <div class="d-flex align-items-center gap-2 mb-1">
-                                            <div class="rounded-3 d-flex align-items-center justify-content-center" style="width:28px; height:28px; background:rgba(34,211,238,0.1); color:#22d3ee; border:1px solid rgba(34,211,238,0.2); flex-shrink:0;">
+                                            <div class="rounded-3 d-flex align-items-center justify-content-center" style="width:28px; height:28px; background:rgba(34,211,238,0.1); color:var(--primary); border:1px solid rgba(34,211,238,0.2); flex-shrink:0;">
                                                 <i class="fas ${att.type && att.type.startsWith('image') ? 'fa-image' : 'fa-file-pdf'}" style="font-size:12px;"></i>
                                             </div>
                                             <div style="flex:1; overflow:hidden">
@@ -8466,7 +8587,7 @@
                             ` : ''}
                             ${ex.attachments && ex.attachments.length > 0 ? `
                                 <div class="col-12 mt-2">
-                                    <div class="d-inline-flex align-items-center gap-2 p-2 px-3 rounded-pill" style="background: rgba(34, 211, 238, 0.08); border: 1px solid rgba(34, 211, 238, 0.2); cursor: pointer; transition: all 0.2s;" onclick="window.openExamAttachmentsGallery('${ek}')" onmouseover="this.style.background='rgba(34,211,238,0.15)'" onmouseout="this.style.background='rgba(34, 211, 238, 0.08)'">
+                                    <div class="d-inline-flex align-items-center gap-2 p-2 px-3 rounded-pill" style="background: rgba(34, 211, 238, 0.08); border: 1px solid rgba(34, 211, 238, 0.2); cursor: pointer; transition: all 0.2s;" onclick="window.openExamAttachmentsGallery('${ek}')" onmouseover="this.style.background='var(--border)'" onmouseout="this.style.background='rgba(34, 211, 238, 0.08)'">
                                         <i class="fas fa-paperclip text-cyan"></i>
                                         <span class="text-white fw-bold" style="font-size:12px;">المرفقات (${ex.attachments.length} ملف)</span>
                                     </div>
@@ -9150,7 +9271,7 @@
             dd.innerHTML = res.length === 0 ? '<div class="search-option text-muted">لا نتائج</div>' : res.slice(0, 8).map(([k, p]) =>
                 `<div class="search-option" onclick="window.selectExamPatient('${k}','${p.name.replace(/'/g, "\\'")}')" 
                      style="display:block !important; padding:15px 20px !important; border-bottom:1px solid rgba(255,255,255,0.1) !important; cursor:pointer !important; min-height:100px !important; height:auto !important; background:rgba(255,255,255,0.02) !important;">
-                    <div style="font-weight:900 !important; font-size:18px !important; color:#ffffff !important; margin-bottom:8px !important; display:block !important; line-height:1.4 !important;">
+                    <div style="font-weight:900 !important; font-size:18px !important;  margin-bottom:8px !important; display:block !important; line-height:1.4 !important;">
                         ${p.name || 'مريض بدون اسم'}
                     </div>
                     <div style="font-size:13px !important; color:#00f2fe !important; background:rgba(0,242,254,0.1) !important; padding:6px 12px !important; border-radius:6px !important; border:1px solid rgba(0,242,254,0.3) !important; display:inline-block !important; font-weight:700 !important; line-height:1.5 !important;">
@@ -9174,7 +9295,7 @@
                 [k, p]) =>
                 `<div class="search-option" onclick="window.selectApptPatient('${k}','${p.name.replace(/'/g, "\\'")}')" 
                      style="display:block !important; padding:15px 20px !important; border-bottom:1px solid rgba(255,255,255,0.1) !important; cursor:pointer !important; min-height:100px !important; height:auto !important; background:rgba(255,255,255,0.02) !important;">
-                    <div style="font-weight:900 !important; font-size:18px !important; color:#ffffff !important; margin-bottom:8px !important; display:block !important; line-height:1.4 !important;">
+                    <div style="font-weight:900 !important; font-size:18px !important;  margin-bottom:8px !important; display:block !important; line-height:1.4 !important;">
                         ${p.name || 'مريض بدون اسم'}
                     </div>
                     <div style="font-size:13px !important; color:#00f2fe !important; background:rgba(0,242,254,0.1) !important; padding:6px 12px !important; border-radius:6px !important; border:1px solid rgba(0,242,254,0.3) !important; display:inline-block !important; font-weight:700 !important; line-height:1.5 !important;">
@@ -9533,7 +9654,7 @@
             dd.innerHTML = res.length === 0 ? '<div class="search-option text-muted">لا نتائج</div>' : res.slice(0, 8).map(([k, p]) =>
                 `<div class="search-option" onclick="window.selectPrescPatient('${k}','${p.name.replace(/'/g, "\\'")}')" 
                      style="display:block !important; padding:15px 20px !important; border-bottom:1px solid rgba(255,255,255,0.1) !important; cursor:pointer !important; min-height:100px !important; height:auto !important; background:rgba(255,255,255,0.02) !important;">
-                    <div style="font-weight:900 !important; font-size:18px !important; color:#ffffff !important; margin-bottom:8px !important; display:block !important; line-height:1.4 !important;">
+                    <div style="font-weight:900 !important; font-size:18px !important;  margin-bottom:8px !important; display:block !important; line-height:1.4 !important;">
                         ${p.name || 'مريض بدون اسم'}
                     </div>
                     <div style="font-size:13px !important; color:#00f2fe !important; background:rgba(0,242,254,0.1) !important; padding:6px 12px !important; border-radius:6px !important; border:1px solid rgba(0,242,254,0.3) !important; display:inline-block !important; font-weight:700 !important; line-height:1.5 !important;">
@@ -9792,9 +9913,9 @@
                 counts.push(dayAppts.length);
                 followUpCounts.push(dayAppts.filter(a => a.isFollowUp).length);
             }
-            const isDark = document.body.classList.contains('dark-mode');
-            const gridColor = isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.05)';
-            const textColor = isDark ? '#94a3b8' : '#64748b';
+            const isDark = true;
+            const gridColor = 'rgba(255,255,255,0.06)';
+            const textColor = '#94a3b8';
             window.weeklyChartInstance = new Chart(ctx, {
                 type: 'bar',
                 data: {
@@ -9930,7 +10051,7 @@
                           ${appts.map(a => {
                             const isFol = a.isFollowUp || a.type === 'متابعة';
                             const timeClass = isFol ? 'followup' : (a.type === 'كشف مستعجل' ? 'urgent' : 'normal');
-                            return `<div class="agenda-patient-row">
+                            return `<div class="agenda-patient-row" onclick="window.navigateTo('search');setTimeout(()=>window.selectGlobalPatient('${a.patientId}'),300)" style="cursor:pointer">
                               <div class="agenda-time-block ${timeClass}">${a.time || '--:--'}</div>
                               <div class="agenda-patient-name" style="font-weight:700">${a.patientName}</div>
                               <span class="agenda-type-tag ${isFol ? 'tag-followup' : 'tag-normal'}">${a.type}</span>
@@ -10805,3 +10926,6 @@
 </body>
 
 </html>
+
+
+
