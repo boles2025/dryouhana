@@ -4320,10 +4320,112 @@
                 max-width: 100%;
                 box-sizing: border-box;
             }
+
+            /* ── Mobile Bottom Nav ── */
+            .mobile-bottom-nav {
+                display: none;
+                position: fixed;
+                bottom: 0;
+                left: 0;
+                right: 0;
+                height: 65px;
+                background: rgba(15, 23, 42, 0.95);
+                backdrop-filter: blur(20px);
+                -webkit-backdrop-filter: blur(20px);
+                border-top: 1px solid rgba(255, 255, 255, 0.1);
+                z-index: 1045;
+                justify-content: space-around;
+                align-items: center;
+                padding-bottom: env(safe-area-inset-bottom);
+            }
+
+            .bottom-nav-item {
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                justify-content: center;
+                color: var(--text-muted);
+                text-decoration: none;
+                font-size: 10px;
+                gap: 4px;
+                flex: 1;
+                transition: all 0.3s;
+                padding: 8px 0;
+                user-select: none;
+                -webkit-tap-highlight-color: transparent;
+            }
+
+            .bottom-nav-item i {
+                font-size: 20px;
+                margin-bottom: 2px;
+                transition: all 0.3s;
+            }
+
+            .bottom-nav-item.active {
+                color: var(--primary);
+            }
+
+            .bottom-nav-item.active i {
+                transform: translateY(-2px);
+                text-shadow: 0 4px 10px rgba(14, 165, 233, 0.5);
+            }
+
+            @media (max-width: 768px) {
+                .mobile-bottom-nav {
+                    display: flex;
+                }
+                .main-content {
+                    padding-bottom: 80px !important;
+                }
+                .modal-dialog {
+                    margin: 0 !important;
+                    width: 100% !important;
+                    max-width: 100% !important;
+                    height: 100% !important;
+                }
+                .modal-content {
+                    height: 100% !important;
+                    border-radius: 0 !important;
+                }
+                .modal-body {
+                    overflow-y: auto;
+                    max-height: calc(100vh - 120px) !important;
+                }
+                .calendar-cell {
+                    border-radius: 4px !important;
+                }
+                .calendar-day-label {
+                    border-radius: 4px !important;
+                }
+            }
     </style>
 </head>
 
 <body class="dark-mode">
+    <!-- Mobile Bottom Navigation -->
+    <div class="mobile-bottom-nav" id="mobileBottomNav">
+        <a href="#" class="bottom-nav-item active" data-bnav="dashboard" onclick="window.navigateTo('dashboard')">
+            <i class="fas fa-home"></i>
+            <span>الرئيسية</span>
+        </a>
+        <a href="#" class="bottom-nav-item" data-bnav="search" onclick="window.navigateTo('search')">
+            <i class="fas fa-users"></i>
+            <span>المرضى</span>
+        </a>
+        <a href="#" class="bottom-nav-item" data-bnav="appointments" onclick="window.navigateTo('appointments')">
+            <i class="fas fa-calendar-alt"></i>
+            <span>المواعيد</span>
+        </a>
+        <a href="#" class="bottom-nav-item" data-bnav="revenue" onclick="window.navigateTo('revenue')">
+            <i class="fas fa-wallet"></i>
+            <span>الإيرادات</span>
+        </a>
+        <a href="#" class="bottom-nav-item" onclick="window.toggleSidebar()">
+            <i class="fas fa-bars"></i>
+            <span>المزيد</span>
+        </a>
+    </div>
+
     <!-- Mobile Sidebar Overlay -->
     <div id="mobileSidebarOverlay" class="mobile-sidebar-overlay" onclick="closeMobileSidebar()"></div>
 
@@ -6196,10 +6298,13 @@
 
             document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
             document.querySelectorAll('#sidebarNav .nav-item').forEach(n => n.classList.remove('active'));
+            document.querySelectorAll('#mobileBottomNav .bottom-nav-item').forEach(n => n.classList.remove('active'));
             const tp = document.getElementById('page-' + page);
             if (tp) tp.classList.add('active');
             const ni = document.querySelector(`#sidebarNav [data-page="${page}"]`);
             if (ni) ni.classList.add('active');
+            const bni = document.querySelector(`#mobileBottomNav [data-bnav="${page}"]`);
+            if (bni) bni.classList.add('active');
             const titles = {
                 dashboard: 'لوحة التحكم', search: 'ملف المريض الشامل', patients: 'تسجيل مريض', appointments: 'المواعيد',
                 examination: 'الكشف الطبي', prescriptions: 'الروشتات', reports: 'التقارير', revenue: 'الإيرادات',
